@@ -1,0 +1,1 @@
+# Noel Clark and Kelley Sinning collaborative project on statistics for Wood + class manuscript
