@@ -1,0 +1,324 @@
+---
+title: "wood_dynamism"
+author: 'Noël Clark'
+date: "2026-06-22"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      out.width = "100%")
+```
+
+```{r load libraries, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(plotly)
+library(patchwork)
+library(GGally)
+library(lme4)
+library(DHARMa)
+library(lmerTest)
+library(performance)
+```
+
+```{r load data, message=FALSE}
+dynamism_data <- read_csv("./data/Metrics/site_metrics.csv")
+
+dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
+  bind_rows( # also want to add back the mod rock_WA site
+    dynamism_data %>% slice(6) %>% 
+      mutate(across(
+        c(site_reach, site),
+        ~ str_replace_all(.x, "_1", "_2")
+        ))
+    )
+
+data_byyr <- read_csv("./data/Metrics/SelectMetricsByYear_06152026.csv")
+data_byyr <- data_byyr %>% 
+  mutate(site_reach = paste0(site,reach))
+
+wood_metrics <- data_byyr %>%
+  mutate(wood_pieces_per_100m = (wood_pieces*100)/(channel_length),
+         wood_accum_per_area = accum_area/channel_area) %>%
+  group_by(site_reach) %>%
+  summarize(avg_wood_pieces_per100m = mean(wood_pieces_per_100m),
+            mean_wood_accum_per_area = mean(wood_accum_per_area))
+
+all_data_byyr <- read.csv("./data/Metrics/ALL_metrics_06152026.csv")
+all_data_byyr <- all_data_byyr %>% 
+  mutate(site_reach = paste0(site,reach))
+```
+
+# Simple Plots
+
+## plot settings
+```{r plot settings}
+wood_colors = c("LW_Channel" = "#99C5B5", "no_LW_Channel" = "#BEA57D")
+```
+
+## wood values by site
+```{r simple wood site plots}
+##### wood values by site by year #####
+data_byyr %>% 
+  ggplot(aes(x = year, y = accum_area, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors) +
+  theme(legend.position = "none") 
+
+data_byyr %>% 
+  ggplot(aes(x = year, y = wood_pieces, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+
+##### mean wood values by site #####
+dynamism_data %>% 
+  ggplot(aes(x = site, y = avg_wood_pieces_per100m, fill = reach)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = wood_colors) +
+  theme(legend.position = "none")
+
+dynamism_data %>% 
+  ggplot(aes(x = site, y = mean_wood_accum_per_area, fill = reach)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = wood_colors)
+
+```
+
+## channel values by site
+```{r simple channel site plots}
+##### channel characteristics v time by site #####
+data_byyr %>% 
+  ggplot(aes(x = year, y = channel_length, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+
+data_byyr %>% 
+  ggplot(aes(x = year, y = channel_area, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) + 
+  scale_color_manual(values = wood_colors)
+```
+
+## response values by site
+```{r simple response values by site}
+##### response metrics v time by site #####
+data_byyr %>% 
+  ggplot(aes(x = year, y = sinuosity, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+
+data_byyr %>% 
+  ggplot(aes(x = year, y = complexity, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+
+data_byyr %>% 
+  ggplot(aes(x = year, y = sdi, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+
+all_data_byyr %>% 
+  ggplot(aes(x = year_to, y = net_change, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+
+all_data_byyr %>% 
+  ggplot(aes(x = year_to, y = erosion_area, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+
+all_data_byyr %>% 
+  ggplot(aes(x = year_to, y = deposition_area, color = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~site) +
+  scale_color_manual(values = wood_colors)
+```
+
+## dynamism values by site
+```{r simple dynamism plots}
+##### Sinuosity vs both mean wood metrics #####
+p1 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = sinuosity_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Pieces per 100m", y = "Sinuosity Dynamism")
+
+p2 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = sinuosity_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Avg. Wood Acculumations per Area", y = "")
+
+(p1 + p2) +
+  plot_annotation(title = "Sinuosity Dynamism vs. Avg Wood Metrics")
+##### end 
+
+##### Complexity vs both mean wood metrics #####
+p1 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = complexity_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Pieces per 100m", y = "Complexity Dynamism")
+
+p2 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = complexity_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Avg. Wood Acculumations per Area", y = "")
+
+(p1 + p2) +
+  plot_annotation(title = "Complexity Dynamism vs. Avg Wood Metrics")
+##### end
+
+##### SDI vs both mean wood metrics #####
+p1 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = sdi_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Pieces per 100m", y = "SDI Dynamism")
+
+p2 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = sdi_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Avg. Wood Acculumations per Area", y = "")
+
+(p1 + p2) +
+  plot_annotation(title = "SDI Dynamism vs. Avg Wood Metrics")
+##### end
+
+##### Net change vs both mean wood metrics #####
+p1 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = net_change_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Pieces per 100m", y = "Net Change Dynamism")
+
+p2 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = net_change_dynamism, color = site)) +
+  geom_point(aes(shape = reach)) +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Avg. Wood Acculumations per Area", y = "")
+
+(p1 + p2) +
+  plot_annotation(title = "Net Change Dynamism vs. Avg Wood Metrics")
+##### end
+```
+
+## correlation plots and test 
+### ggpairs uses the pearson correlation test by default
+```{r correlation plot test}
+# ggpairs uses pearson cor test by default 
+data_byyr %>%
+  mutate(wood_pieces_per_100m = (wood_pieces*100)/(channel_length),
+         wood_accum_per_area = accum_area/channel_area) %>% 
+  select(sinuosity, complexity, sdi, channel_length, channel_area, wood_pieces_per_100m, wood_accum_per_area) %>% 
+  ggpairs(progress = F)
+
+dynamism_data %>% 
+  select(sinuosity_dynamism, complexity_dynamism, sdi_dynamism, net_change_dynamism, avg_wood_pieces_per100m, mean_wood_accum_per_area) %>% 
+  ggpairs(progress = F)
+```
+
+## test null model for sinuosity 
+```{r models}
+mod_data <- dynamism_data %>% 
+  filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
+  mutate(site = str_replace_all(site, "_[:digit:]$", ""))
+
+dyn_null <- lmer(sinuosity_dynamism ~ (1|site), mod_data)
+
+plot(simulateResiduals(dyn_null))
+
+summary(dyn_null)
+coef(dyn_null)
+r2(dyn_null)
+
+site_intercepts <- coef(dyn_null)$site$"(Intercept)"
+
+mod_data %>% 
+  ggplot(aes(x=site, y=sinuosity_dynamism)) +
+  geom_point() +
+  geom_hline(yintercept = 0.010176) +
+  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32") +
+  labs(title = "Null Model: Random Effect for Site",
+       caption = "Black line is global mean, gray dashed lines are site-intercepts. Site explains ~21% of variation in sinuosity dynamism.")
+
+```
+
+## test timeseries trend model for channel area at Skunk Cr and Indian Cr
+## !don't interpret
+## !skunk model did not converge 
+## !indian model terminated 
+```{r timeseries trend model}
+##### for skunk site #####
+skunk_byyr <- data_byyr %>% 
+  filter(site == "Skunk") 
+# channel area over time
+# model didn't converge fully?
+skunk.ch.area.lm <- lm(channel_area ~ year + reach + (year*reach), skunk_byyr)
+
+plot(simulateResiduals(skunk.ch.area.lm))
+
+summary(skunk.ch.area.lm)
+coef(skunk.ch.area.lm)
+r2(skunk.ch.area.lm)
+
+skunk_byyr %>% 
+  ggplot(aes(year, channel_area, color = reach)) +
+  geom_point() +
+  geom_line(aes(group=reach)) +
+  geom_smooth(method = "lm", formula = y ~ x + x + (x*x))
+
+##### for indian site #####
+indian_byyr <- data_byyr %>% 
+  filter(site == "Indian") 
+# channel area over time
+# model fitting terminated with error!
+indian.ch.area.lm <- lm(channel_area ~ year + reach + (year*reach), indian_byyr)
+
+plot(simulateResiduals(indian.ch.area.lm))
+
+summary(indian.ch.area.lm)
+coef(indian.ch.area.lm)
+r2(indian.ch.area.lm)
+
+indian_byyr %>% 
+  ggplot(aes(year, channel_area, color = reach)) +
+  geom_point() +
+  geom_line(aes(group=reach)) +
+  geom_smooth(method = "lm", formula = y ~ x + x + (x*x))
+```
+
