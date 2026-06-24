@@ -1,0 +1,101 @@
+---
+title: "metric_calcs"
+author: "Shayla Triantafillou"
+date: "2026-06-15"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(plotly)
+```
+
+```{r}
+data <- read_csv("C:/Users/striant/OneDrive - Colostate/WCNR Geo Fluvial Geomorphology - GEOL 692 - Spring 2026/Data/Metrics/ALL_Metrics_06152026.csv")
+
+data_byyr <- read_csv("C:/Users/striant/OneDrive - Colostate/WCNR Geo Fluvial Geomorphology - GEOL 692 - Spring 2026/Data/Metrics/SelectMetricsByYear_06152026.csv")
+
+wood_metrics <- data_byyr %>%
+  mutate(site_reach = paste0(site,reach),
+         wood_pieces_per_100m = (wood_pieces*100)/(channel_length),
+         wood_accum_per_area = accum_area/channel_area) %>%
+  group_by(site_reach) %>%
+  summarize(avg_wood_pieces_per100m = mean(wood_pieces_per_100m),
+            mean_wood_accum_per_area = mean(wood_accum_per_area))
+
+
+```
+
+```{r}
+dynamism <- data %>%
+  group_by(site, reach) %>%
+  summarize(
+    #Calculate dynamism metric
+      sum_abs_change_sin = sum(abs(sinuosity_change)),
+      sum_abs_change_comp = sum(abs(complexity_change)),
+      sum_abs_change_sdi = sum(abs(sdi_change)),
+      sum_abs_change_net_change = sum(abs(net_change)),
+      delta_t = max(year_to) - min(year_from) +1, # +1 makes it inclusive (so 2010-2015 includes 6 years, because each end year represents a year of imagery)
+      n_images = n(),
+      sinuosity_dynamism = (sum_abs_change_sin)/(delta_t * n_images),
+      complexity_dynamism = (sum_abs_change_comp)/(delta_t * n_images),
+      sdi_dynamism = (sum_abs_change_sdi)/(delta_t * n_images),
+      net_change_dynamism = (sum_abs_change_net_change)/(delta_t * n_images),
+      .groups = "drop"
+
+  ) %>%
+  mutate(site_reach = paste0(site,reach),
+         reach = factor(reach, levels=c("no_LW_Channel","LW_Channel")))
+
+site_metrics <- merge(dynamism, wood_metrics, by = "site_reach") %>%  
+  filter(!site_reach == "Rock_WA_2no_LW_Channel")#Remove duplicate Rock WA 2 no LW Channel.
+
+write_csv(dynamism, "output/site_metrics.csv")
+```
+
+#inspo figures
+
+```{r}
+wood_nowood_colors = c("#99C5B5", "#BEA57D")
+
+dynamism %>%
+  ggplot(aes(x = site, y = sinuosity_dynamism)) +
+  geom_boxplot(aes(fill = site), show.legend = FALSE) +
+  geom_boxplot(aes(fill=site), show.legend = FALSE) +
+  scale_fill_manual(values = wood_nowood_colors) +
+  geom_point() +
+  geom_line(aes(group = river), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Reach", y = "Sinuosity dynamism")
+ 
+dynamism %>%
+  ggplot(aes(x = site, y = complexity_dynamism)) +
+  geom_boxplot(aes(fill = site), show.legend = FALSE) +
+  geom_boxplot(aes(fill=site), show.legend = FALSE) +
+  scale_fill_manual(values = wood_nowood_colors) +
+  geom_point() +
+  geom_line(aes(group = river), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Reach", y = "Complexity dynamism")
+ 
+dynamism %>%
+  ggplot(aes(x = site, y = sdi_dynamism)) +
+  geom_boxplot(aes(fill = site), show.legend = FALSE) +
+  geom_boxplot(aes(fill=site), show.legend = FALSE) +
+  scale_fill_manual(values = wood_nowood_colors) +
+  geom_point() +
+  geom_line(aes(group = river), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Reach", y = "SDI dynamism")
+
+dynamism %>%
+  ggplot(aes(x = site, y = net_change_dynamism)) +
+  geom_boxplot(aes(fill = site), show.legend = FALSE) +
+  geom_boxplot(aes(fill=site), show.legend = FALSE) +
+  scale_fill_manual(values = wood_nowood_colors) +
+  geom_point() +
+  geom_line(aes(group = river), color = "black", alpha = 0.5) +
+  theme_bw() +
+  labs(x = "Reach", y = "Net change dynamism")
+```
+
