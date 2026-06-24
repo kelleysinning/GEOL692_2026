@@ -24,7 +24,10 @@ library(performance)
 ```
 
 ```{r load data, message=FALSE}
-dynamism_data <- read_csv("./data/Metrics/site_metrics.csv")
+##### change directory if needed ######
+data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
+
+dynamism_data <- read_csv(file.path(data_dir, "/Metrics/site_metrics.csv"))
 
 dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
   bind_rows( # also want to add back the mod rock_WA site
@@ -35,7 +38,7 @@ dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate ro
         ))
     )
 
-data_byyr <- read_csv("./data/Metrics/SelectMetricsByYear_06152026.csv")
+data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_06152026.csv"))
 data_byyr <- data_byyr %>% 
   mutate(site_reach = paste0(site,reach))
 
@@ -46,7 +49,7 @@ wood_metrics <- data_byyr %>%
   summarize(avg_wood_pieces_per100m = mean(wood_pieces_per_100m),
             mean_wood_accum_per_area = mean(wood_accum_per_area))
 
-all_data_byyr <- read.csv("./data/Metrics/ALL_metrics_06152026.csv")
+all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_06152026.csv"))
 all_data_byyr <- all_data_byyr %>% 
   mutate(site_reach = paste0(site,reach))
 ```
