@@ -27,7 +27,7 @@ library(performance)
 ##### change directory if needed ######
 data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
 
-dynamism_data <- read_csv(file.path(data_dir, "/Metrics/site_metrics.csv"))
+dynamism_data <- read_csv(file.path(data_dir, "Metrics/site_metrics_07022026.csv"))
 
 dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
   bind_rows( # also want to add back the mod rock_WA site
@@ -36,21 +36,19 @@ dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate ro
         c(site_reach, site),
         ~ str_replace_all(.x, "_1", "_2")
         ))
-    )
+    ) 
 
-data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_06152026.csv"))
+data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026.csv"))
 data_byyr <- data_byyr %>% 
-  mutate(site_reach = paste0(site,reach))
+  rename(reach = site,
+         site = river) %>% 
+  mutate(site_reach = paste0(site,reach)) 
 
-wood_metrics <- data_byyr %>%
-  mutate(wood_pieces_per_100m = (wood_pieces*100)/(channel_length),
-         wood_accum_per_area = accum_area/channel_area) %>%
-  group_by(site_reach) %>%
-  summarize(avg_wood_pieces_per100m = mean(wood_pieces_per_100m),
-            mean_wood_accum_per_area = mean(wood_accum_per_area))
 
-all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_06152026.csv"))
+all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
 all_data_byyr <- all_data_byyr %>% 
+  rename(reach = site,
+         site = river) %>% 
   mutate(site_reach = paste0(site,reach))
 ```
 
@@ -261,15 +259,15 @@ mod_data <- dynamism_data %>%
   filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
   mutate(site = str_replace_all(site, "_[:digit:]$", ""))
 
-dyn_null <- lmer(sinuosity_dynamism ~ (1|site), mod_data)
+sin_dyn_null <- lmer(sinuosity_dynamism ~ (1|site), mod_data)
 
-plot(simulateResiduals(dyn_null))
+plot(simulateResiduals(sin_dyn_null))
 
-summary(dyn_null)
-coef(dyn_null)
-r2(dyn_null)
+summary(sin_dyn_null)
+coef(sin_dyn_null)
+r2(sin_dyn_null)
 
-site_intercepts <- coef(dyn_null)$site$"(Intercept)"
+site_intercepts <- coef(sin_dyn_null)$site$"(Intercept)"
 
 mod_data %>% 
   ggplot(aes(x=site, y=sinuosity_dynamism)) +
@@ -279,16 +277,79 @@ mod_data %>%
   labs(title = "Null Model: Random Effect for Site",
        caption = "Black line is global mean, gray dashed lines are site-intercepts. Site explains ~21% of variation in sinuosity dynamism.")
 
+
+###
+# sin wood accum model
+###
+
+sin_dyn_mod <- lmer(sinuosity_dynamism ~ mean_wood_accum_per_area + (1|site), mod_data)
+
+plot(simulateResiduals(sin_dyn_mod))
+
+summary(sin_dyn_mod)
+coef(sin_dyn_mod)
+r2(sin_dyn_mod)
+
+site_intercepts <- coef(sin_dyn_mod)$site$"(Intercept)"
+
+mod_data %>% 
+  ggplot(aes(x=site, y=sinuosity_dynamism)) +
+  geom_point() +
+  geom_hline(yintercept = 0.010176) +
+  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32") +
+  labs(title = "Null Model: Random Effect for Site",
+       caption = "Black line is global mean, gray dashed lines are site-intercepts. Site explains ~21% of variation in sinuosity dynamism.")
 ```
+
+```{r by year models}
+byyr_mod_data <- data_byyr %>% 
+  filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
+  mutate(site = str_replace_all(site, "_[:digit:]$", ""))
+
+sin_null <- lmer(sinuosity ~ (1|site), byyr_mod_data)
+
+plot(simulateResiduals(sin_null))
+summary(sin_null)
+coef(sin_null)
+r2(sin_null)
+
+site_intercepts <- coef(sin_null)$site$"(Intercept)"
+
+byyr_mod_data %>% 
+  ggplot(aes(x=site, y=sinuosity)) +
+  geom_point() +
+  geom_hline(yintercept = 2.609) +
+  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32") +
+  labs(title = "Null Model: Random Effect for Site",
+       caption = "Black line is global mean, gray dashed lines are site-intercepts. Site explains ~64% of variation in sinuosity.")
+```
+
 
 ## test timeseries trend model for channel area at Skunk Cr and Indian Cr
 ## !don't interpret
 ## !skunk model did not converge 
 ## !indian model terminated 
 ```{r timeseries trend model}
+
+# I started looking at a null model for one metric per site with Skunk as the test site, run into some errors with normality of variances being off. need to dig into things later
+
 ##### for skunk site #####
 skunk_byyr <- data_byyr %>% 
-  filter(site == "Skunk") 
+  filter(site == "Skunk")
+
+skunk.sin <- lm(sinuosity ~ accum_area + reach + (accum_area*reach), skunk_byyr)
+plot(simulateResiduals(skunk.sin))
+
+summary(skunk.sin)
+coef(skunk.sin)
+r2(skunk.sin)
+
+skunk_byyr %>% 
+  ggplot(aes(accum_area, reach)) +
+  geom_point() +
+  geom_line() +
+  geom_smooth(method = "lm", formula = y ~ x)
+
 # channel area over time
 # model didn't converge fully?
 skunk.ch.area.lm <- lm(channel_area ~ year + reach + (year*reach), skunk_byyr)
@@ -308,6 +369,13 @@ skunk_byyr %>%
 ##### for indian site #####
 indian_byyr <- data_byyr %>% 
   filter(site == "Indian") 
+
+indian.ch.area.null <- lm(channel_area ~ 1, indian_byyr)
+plot(simulateResiduals(indian.ch.area.null))
+summary(indian.ch.area.null)
+coef(indian.ch.area.null)
+r2(indian.ch.area.null)
+
 # channel area over time
 # model fitting terminated with error!
 indian.ch.area.lm <- lm(channel_area ~ year + reach + (year*reach), indian_byyr)

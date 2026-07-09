@@ -6,16 +6,20 @@ output: html_document
 ---
 
 ```{r}
+###
+# this version edited 07022026 by Noël for redoing metrics calcs from ben
 library(tidyverse)
 library(plotly)
 ```
 
 ```{r}
-data <- read_csv("C:/Users/striant/OneDrive - Colostate/WCNR Geo Fluvial Geomorphology - GEOL 692 - Spring 2026/Data/Metrics/ALL_Metrics_06152026.csv")
+data <- read_csv("./data/Metrics/ALL_metrics_07022026.csv")
 
-data_byyr <- read_csv("C:/Users/striant/OneDrive - Colostate/WCNR Geo Fluvial Geomorphology - GEOL 692 - Spring 2026/Data/Metrics/SelectMetricsByYear_06152026.csv")
+data_byyr <- read_csv("./data/Metrics/SelectMetricsByYear_07022026.csv")
 
 wood_metrics <- data_byyr %>%
+  rename(reach = site,
+         site = river) %>% 
   mutate(site_reach = paste0(site,reach),
          wood_pieces_per_100m = (wood_pieces*100)/(channel_length),
          wood_accum_per_area = accum_area/channel_area) %>%
@@ -27,7 +31,9 @@ wood_metrics <- data_byyr %>%
 ```
 
 ```{r}
-dynamism <- data %>%
+dynamism <- data %>% 
+  rename(reach = site,
+         site = river) %>% 
   group_by(site, reach) %>%
   summarize(
     #Calculate dynamism metric
@@ -50,52 +56,5 @@ dynamism <- data %>%
 site_metrics <- merge(dynamism, wood_metrics, by = "site_reach") %>%  
   filter(!site_reach == "Rock_WA_2no_LW_Channel")#Remove duplicate Rock WA 2 no LW Channel.
 
-write_csv(dynamism, "output/site_metrics.csv")
+write_csv(site_metrics, "./data/Metrics/site_metrics_07022026.csv")
 ```
-
-#inspo figures
-
-```{r}
-wood_nowood_colors = c("#99C5B5", "#BEA57D")
-
-dynamism %>%
-  ggplot(aes(x = site, y = sinuosity_dynamism)) +
-  geom_boxplot(aes(fill = site), show.legend = FALSE) +
-  geom_boxplot(aes(fill=site), show.legend = FALSE) +
-  scale_fill_manual(values = wood_nowood_colors) +
-  geom_point() +
-  geom_line(aes(group = river), color = "black", alpha = 0.5) +
-  theme_bw() +
-  labs(x = "Reach", y = "Sinuosity dynamism")
- 
-dynamism %>%
-  ggplot(aes(x = site, y = complexity_dynamism)) +
-  geom_boxplot(aes(fill = site), show.legend = FALSE) +
-  geom_boxplot(aes(fill=site), show.legend = FALSE) +
-  scale_fill_manual(values = wood_nowood_colors) +
-  geom_point() +
-  geom_line(aes(group = river), color = "black", alpha = 0.5) +
-  theme_bw() +
-  labs(x = "Reach", y = "Complexity dynamism")
- 
-dynamism %>%
-  ggplot(aes(x = site, y = sdi_dynamism)) +
-  geom_boxplot(aes(fill = site), show.legend = FALSE) +
-  geom_boxplot(aes(fill=site), show.legend = FALSE) +
-  scale_fill_manual(values = wood_nowood_colors) +
-  geom_point() +
-  geom_line(aes(group = river), color = "black", alpha = 0.5) +
-  theme_bw() +
-  labs(x = "Reach", y = "SDI dynamism")
-
-dynamism %>%
-  ggplot(aes(x = site, y = net_change_dynamism)) +
-  geom_boxplot(aes(fill = site), show.legend = FALSE) +
-  geom_boxplot(aes(fill=site), show.legend = FALSE) +
-  scale_fill_manual(values = wood_nowood_colors) +
-  geom_point() +
-  geom_line(aes(group = river), color = "black", alpha = 0.5) +
-  theme_bw() +
-  labs(x = "Reach", y = "Net change dynamism")
-```
-
