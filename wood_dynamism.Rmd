@@ -43,7 +43,8 @@ data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026
 data_byyr <- data_byyr %>% 
   rename(reach = site,
          site = river) %>% 
-  mutate(site_reach = paste0(site,reach)) 
+  mutate(site_reach = paste0(site,reach)) %>% 
+  mutate(ratio_accum_to_ch_area = accum_area/channel_area)
 
 
 all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
@@ -60,39 +61,63 @@ all_data_byyr <- all_data_byyr %>%
 wood_colors = c("LW_Channel" = "#99C5B5", "no_LW_Channel" = "#BEA57D")
 ```
 
-## visualizing response metrics 
+## visualizing distribution of response metrics 
 ```{r simple response value plots}
 data_byyr %>% 
   ggplot(aes(x=sinuosity)) +
-  geom_density() + 
-  facet_wrap(~reach)
+  geom_density() 
 
 data_byyr %>% 
   ggplot(aes(x=complexity)) +
-  geom_density()+ 
-  facet_wrap(~reach)
+  geom_density()
 
 data_byyr %>% 
   ggplot(aes(x=sdi)) +
-  geom_density() + 
-  facet_wrap(~reach)
+  geom_density() 
 
 data_byyr %>% 
-  ggplot(aes(x=channel_area)) +
-  geom_density() + 
-  facet_wrap(~reach)
+  ggplot(aes(x=ratio_accum_to_ch_area)) +
+  geom_density() 
+
+```
+
+## stage 1: wood as a response to site, reach, & time
+```{r}
+# how does standardized wood (the ratio of wood accumulation to channel area) change over time?
+data_byyr %>%
+  ggplot(aes(x=year, y=ratio_accum_to_ch_area, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach))
+
+```
+
+
+## stage 2: how do sinuosity, complexity, and sdi change as a function of standardized wood
+
+## visualizing relationship between response v predictor (ratio_accum_to_ch_area)
+## within a site_reach combo the relationship is linear-ish? 
+```{r visualize sin comp and sdi v wood}
+data_byyr %>% 
+  ggplot(aes(x=ratio_accum_to_ch_area, y=sinuosity, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group=site_reach))
 
 data_byyr %>% 
-  ggplot(aes(x=channel_length)) +
-  geom_density() + 
-  facet_wrap(~reach) 
+  ggplot(aes(x=ratio_accum_to_ch_area, y=complexity, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group=site_reach))
+
+data_byyr %>% 
+  ggplot(aes(x=ratio_accum_to_ch_area, y=sdi, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group=site_reach))
 ```
 
 ## wood values by site
 ```{r simple wood site plots}
 ##### wood values by site by year #####
 data_byyr %>% 
-  ggplot(aes(x = year, y = accum_area, color = reach)) +
+  ggplot(aes(x = year, y = ratio_accum_to_ch_area, color = reach)) +
   geom_point() +
   geom_line(aes(group = site_reach)) +
   facet_wrap(~site) +
@@ -162,26 +187,26 @@ data_byyr %>%
   facet_wrap(~site) +
   scale_color_manual(values = wood_colors)
 
-all_data_byyr %>% 
-  ggplot(aes(x = year_to, y = net_change, color = reach)) +
-  geom_point() +
-  geom_line(aes(group = site_reach)) +
-  facet_wrap(~site) +
-  scale_color_manual(values = wood_colors)
-
-all_data_byyr %>% 
-  ggplot(aes(x = year_to, y = erosion_area, color = reach)) +
-  geom_point() +
-  geom_line(aes(group = site_reach)) +
-  facet_wrap(~site) +
-  scale_color_manual(values = wood_colors)
-
-all_data_byyr %>% 
-  ggplot(aes(x = year_to, y = deposition_area, color = reach)) +
-  geom_point() +
-  geom_line(aes(group = site_reach)) +
-  facet_wrap(~site) +
-  scale_color_manual(values = wood_colors)
+# all_data_byyr %>% 
+#   ggplot(aes(x = year_to, y = net_change, color = reach)) +
+#   geom_point() +
+#   geom_line(aes(group = site_reach)) +
+#   facet_wrap(~site) +
+#   scale_color_manual(values = wood_colors)
+# 
+# all_data_byyr %>% 
+#   ggplot(aes(x = year_to, y = erosion_area, color = reach)) +
+#   geom_point() +
+#   geom_line(aes(group = site_reach)) +
+#   facet_wrap(~site) +
+#   scale_color_manual(values = wood_colors)
+# 
+# all_data_byyr %>% 
+#   ggplot(aes(x = year_to, y = deposition_area, color = reach)) +
+#   geom_point() +
+#   geom_line(aes(group = site_reach)) +
+#   facet_wrap(~site) +
+#   scale_color_manual(values = wood_colors)
 ```
 
 ## dynamism values by site
@@ -278,147 +303,50 @@ data_byyr %>%
   ggpairs(progress = F)
 
 dynamism_data %>% 
-  select(sinuosity_dynamism, complexity_dynamism, sdi_dynamism, net_change_dynamism, avg_wood_pieces_per100m, mean_wood_accum_per_area) %>% 
+  dplyr::select(sinuosity_dynamism, complexity_dynamism, sdi_dynamism, net_change_dynamism, avg_wood_pieces_per100m, mean_wood_accum_per_area) %>% 
   ggpairs(progress = F)
 ```
 
-## test null model for sinuosity 
-```{r models}
-mod_data <- dynamism_data %>% 
-  filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
-  mutate(site = str_replace_all(site, "_[:digit:]$", ""))
+## base model for sinuosity
+# "random effects should reflect the design, but complexity should be justified by the amount of information available"
+```{r sinuosity base model}
+# byyr_mod_data <- data_byyr %>% 
+#   filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
+#   mutate(site = str_replace_all(site, "_[:digit:]$", ""))
 
-sin_dyn_null <- lmer(sinuosity_dynamism ~ (1|site), mod_data)
+data_byyr <- data_byyr %>% 
+  mutate(site = factor(site),
+         reach = factor(reach))
 
-plot(simulateResiduals(sin_dyn_null))
+mod_data_byyr <- data_byyr %>% 
+  mutate(log_sin = log(sinuosity))
 
-summary(sin_dyn_null)
-coef(sin_dyn_null)
-r2(sin_dyn_null)
+mod_data_byyr %>% 
+  ggplot(aes(x=log_sin)) +
+  geom_density()
 
-site_intercepts <- coef(sin_dyn_null)$site$"(Intercept)"
+# simplest model that reflects the hierarchical design of the study 
+base_sin <- lmer(log_sin ~ year * reach + ratio_accum_to_ch_area + (1|site), mod_data_byyr)
 
-mod_data %>% 
-  ggplot(aes(x=site, y=sinuosity_dynamism)) +
-  geom_point() +
-  geom_hline(yintercept = 0.010176) +
-  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32") +
-  labs(title = "Null Model: Random Effect for Site",
-       caption = "Black line is global mean, gray dashed lines are site-intercepts. Site explains ~21% of variation in sinuosity dynamism.")
+plot(simulateResiduals(base_sin))
+summary(base_sin)
+coef(base_sin)
+r2(base_sin)
 
+site_intercepts <- coef(base_sin)$site$"(Intercept)"
 
-###
-# sin wood accum model
-###
-
-sin_dyn_mod <- lmer(sinuosity_dynamism ~ mean_wood_accum_per_area + (1|site), mod_data)
-
-plot(simulateResiduals(sin_dyn_mod))
-
-summary(sin_dyn_mod)
-coef(sin_dyn_mod)
-r2(sin_dyn_mod)
-
-site_intercepts <- coef(sin_dyn_mod)$site$"(Intercept)"
-
-mod_data %>% 
-  ggplot(aes(x=site, y=sinuosity_dynamism)) +
-  geom_point() +
-  geom_hline(yintercept = 0.010176) +
-  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32") +
-  labs(title = "Null Model: Random Effect for Site",
-       caption = "Black line is global mean, gray dashed lines are site-intercepts. Site explains ~21% of variation in sinuosity dynamism.")
-```
-
-```{r by year models}
-byyr_mod_data <- data_byyr %>% 
-  filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
-  mutate(site = str_replace_all(site, "_[:digit:]$", ""))
-
-sin_null <- lmer(sinuosity ~ (1|site), byyr_mod_data)
-
-plot(simulateResiduals(sin_null))
-summary(sin_null)
-coef(sin_null)
-r2(sin_null)
-
-site_intercepts <- coef(sin_null)$site$"(Intercept)"
-
-byyr_mod_data %>% 
+data_byyr %>% 
   ggplot(aes(x=site, y=sinuosity)) +
   geom_point() +
-  geom_hline(yintercept = 2.609) +
-  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32") +
-  labs(title = "Null Model: Random Effect for Site",
-       caption = "Black line is global mean, gray dashed lines are site-intercepts. Site explains ~64% of variation in sinuosity.")
+  geom_hline(yintercept = 3.85) +
+  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32")
+
+data_byyr %>% 
+  ggplot(aes(x=ratio_accum_to_ch_area, y=sinuosity)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  geom_hline(yintercept = 3.85) +
+  geom_hline(yintercept = site_intercepts, linetype = "dashed", color = "gray32")
 ```
 
-
-## test timeseries trend model for channel area at Skunk Cr and Indian Cr
-## !don't interpret
-## !skunk model did not converge 
-## !indian model terminated 
-```{r timeseries trend model}
-
-# I started looking at a null model for one metric per site with Skunk as the test site, run into some errors with normality of variances being off. need to dig into things later
-
-##### for skunk site #####
-skunk_byyr <- data_byyr %>% 
-  filter(site == "Skunk")
-
-skunk.sin <- lm(sinuosity ~ accum_area + reach + (accum_area*reach), skunk_byyr)
-plot(simulateResiduals(skunk.sin))
-
-summary(skunk.sin)
-coef(skunk.sin)
-r2(skunk.sin)
-
-skunk_byyr %>% 
-  ggplot(aes(accum_area, reach)) +
-  geom_point() +
-  geom_line() +
-  geom_smooth(method = "lm", formula = y ~ x)
-
-# channel area over time
-# model didn't converge fully?
-skunk.ch.area.lm <- lm(channel_area ~ year + reach + (year*reach), skunk_byyr)
-
-plot(simulateResiduals(skunk.ch.area.lm))
-
-summary(skunk.ch.area.lm)
-coef(skunk.ch.area.lm)
-r2(skunk.ch.area.lm)
-
-skunk_byyr %>% 
-  ggplot(aes(year, channel_area, color = reach)) +
-  geom_point() +
-  geom_line(aes(group=reach)) +
-  geom_smooth(method = "lm", formula = y ~ x + x + (x*x))
-
-##### for indian site #####
-indian_byyr <- data_byyr %>% 
-  filter(site == "Indian") 
-
-indian.ch.area.null <- lm(channel_area ~ 1, indian_byyr)
-plot(simulateResiduals(indian.ch.area.null))
-summary(indian.ch.area.null)
-coef(indian.ch.area.null)
-r2(indian.ch.area.null)
-
-# channel area over time
-# model fitting terminated with error!
-indian.ch.area.lm <- lm(channel_area ~ year + reach + (year*reach), indian_byyr)
-
-plot(simulateResiduals(indian.ch.area.lm))
-
-summary(indian.ch.area.lm)
-coef(indian.ch.area.lm)
-r2(indian.ch.area.lm)
-
-indian_byyr %>% 
-  ggplot(aes(year, channel_area, color = reach)) +
-  geom_point() +
-  geom_line(aes(group=reach)) +
-  geom_smooth(method = "lm", formula = y ~ x + x + (x*x))
-```
 
