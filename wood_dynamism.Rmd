@@ -21,6 +21,7 @@ library(lme4)
 library(DHARMa)
 library(lmerTest)
 library(performance)
+library(MASS)
 ```
 
 ```{r load data, message=FALSE}
@@ -58,6 +59,73 @@ all_data_byyr <- all_data_byyr %>%
 ```{r plot settings}
 wood_colors = c("LW_Channel" = "#99C5B5", "no_LW_Channel" = "#BEA57D")
 ```
+
+## visualizing response metrics 
+```{r simple response value plots}
+data_byyr %>% 
+  ggplot(aes(x=sinuosity)) +
+  geom_density() + 
+  facet_wrap(~reach)
+
+data_byyr %>% 
+  ggplot(aes(x=complexity)) +
+  geom_density()+ 
+  facet_wrap(~reach)
+
+data_byyr %>% 
+  ggplot(aes(x=sdi)) +
+  geom_density() + 
+  facet_wrap(~reach)
+
+data_byyr %>% 
+  ggplot(aes(x=channel_area)) +
+  geom_density() + 
+  facet_wrap(~reach)
+
+data_byyr %>% 
+  ggplot(aes(x=channel_length)) +
+  geom_density() + 
+  facet_wrap(~reach) 
+```
+
+```{r}
+data_byyr %>% 
+  ggplot(aes(x=accum_area)) +
+  geom_density()
+
+x <- log10(data_byyr$accum_area[data_byyr$accum_area != 0])
+fitdistr(x, densfun = "normal")
+
+hist(rnorm(n=length(x), mean = 3.16105028, sd = 0.61565545))
+
+hist(10^(rnorm(n=length(x), mean = 3.16105028, sd = 0.61565545)))
+
+## data generating process of wood_pieces best described by negative binomial (because of overdispersion)
+
+# visualize raw data
+data_byyr %>% 
+  ggplot(aes(x=wood_pieces)) +
+  geom_bar() 
+
+# MLE for raw data using negative binomial
+x <- data_byyr$wood_pieces
+
+fit <- glm.nb(x ~ 1)
+exp(coef(fit)) # mean
+fit$theta      # size
+
+val <- as.data.frame(table(x)/sum(table(x)))$x
+obs_probs <- as.data.frame(table(x)/sum(table(x)))$Freq 
+pred_probs <- dnbinom(x = c(0:max(x)), mu = exp(coef(fit)), size = fit$theta)
+
+cbind(val, obs_probs, pred_probs)
+
+ggplot(aes(x = c(0:20))) +
+  geom_bar(aes(y=obs_probs)) +
+  geom_bar(aes(y=pred_probs), fill = "blue", alpha = 0.7)
+
+```
+
 
 ## wood values by site
 ```{r simple wood site plots}
