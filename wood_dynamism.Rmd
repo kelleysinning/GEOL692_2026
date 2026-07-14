@@ -29,8 +29,10 @@ library(AICcmodavg)
 ```{r load data, message=FALSE}
 ## change directory if needed ##
 data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
+setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Wood+/Wood+") # Kelley's working directory
 
 dynamism_data <- read_csv(file.path(data_dir, "Metrics/site_metrics_07022026.csv"))
+dynamism_data <- read_csv("site_metrics_07022026.csv") # Kelley's path
 
 dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
   bind_rows( # also want to add back the mod rock_WA site
@@ -42,6 +44,7 @@ dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate ro
     ) 
 
 data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026.csv"))
+data_byyr <- read_csv("SelectMetricsByYear_07022026.csv") # Kelley's path
 data_byyr <- data_byyr %>% 
   rename(reach = site,
          site = river) %>% 
@@ -52,6 +55,7 @@ data_byyr <- data_byyr %>%
 
 
 all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
+all_data_byyr <- read.csv("ALL_metrics_07022026.csv") # Kelley's path
 all_data_byyr <- all_data_byyr %>% 
   rename(reach = site,
          site = river) %>% 
@@ -313,6 +317,182 @@ p2 <- dynamism_data %>%
   plot_annotation(title = "Net Change Dynamism vs. Avg Wood Metrics")
 ##### end
 ```
+
+```{r simple dynamism plots pt. 2}
+library(grid)
+library(rcartocolor)
+library(dplyr)
+library(patchwork)
+
+## CLEANING UP
+# Adjusting so all 3 metrics can be plotted on same graph
+dynamism_cubed <- dynamism_data %>%
+  pivot_longer(c(sinuosity_dynamism, sdi_dynamism, net_change_dynamism),
+               names_to = "Metric",
+               values_to = "Value") %>%
+  group_by(Metric) %>%
+  mutate(Value_scaled = (scale(Value))) # calculated a separate z-score for each dynamism metric
+  # will show dynamism values relative to each other
+
+# Essentially, does wood accumulation change dynamism relative to it's normal range?
+
+# Looking at colorblind friendly color schemes
+rcartocolor::display_carto_all()
+carto_pal(7, "Fall")
+
+# Renaming labels
+dynamism_cubed <- dynamism_cubed %>%
+  mutate(
+    Metric = recode(
+      Metric,
+      sinuosity_dynamism = "Sinuosity",
+      sdi_dynamism = "SDI",
+      net_change_dynamism = "Net Channel Change"
+    ),
+    reach = recode(
+      reach,
+      LW_Channel = "Large Wood",
+      no_LW_Channel = "Control"
+    ))
+    
+## PLOTS
+# Good looking plots but lacking detail of site and reach
+ggplot(dynamism_cubed, aes(avg_wood_pieces_per100m, Value_scaled, color = Metric)) +
+  geom_line(size = 1)
+
+ggplot(dynamism_cubed, aes(mean_wood_accum_per_area, Value_scaled, color = Metric)) +
+  geom_line(size = 1)
+
+# For avg_wood_pieces_per100m
+avgwoodpieces <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = avg_wood_pieces_per100m,
+    y = Value_scaled,
+    color = Metric
+  )
+) +
+  scale_color_manual(values = c(
+  "Sinuosity" = "#70A494",
+  "SDI" = "#DE8A5A",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = site),
+    size = 3)+
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  facet_wrap(~reach) +
+    facet_wrap(~reach, scales = "free_x") +
+    labs(
+    x = "Mean wood pieces (per 100m)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  theme_bw()
+
+
+# For mean_wood_accum_per_area
+meanwood <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = mean_wood_accum_per_area,
+    y = Value_scaled,
+    color = Metric
+  )
+) +
+  scale_color_manual(values = c(
+  "Sinuosity" = "#70A494",
+  "SDI" = "#DE8A5A",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = site),
+    size = 3)+
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+    facet_wrap(~reach, scales = "free_x") +
+    labs(
+    x = "Mean wood accumulation (per area)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  theme_bw()
+
+# Fixing x-axes so you can see them on their own scale since it's wacky in the above
+meanwood_freex <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = mean_wood_accum_per_area,
+    y = Value_scaled,
+    color = Metric
+  )
+) +
+  scale_color_manual(values = c(
+  "Sinuosity" = "#70A494",
+  "SDI" = "#DE8A5A",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = site),
+    size = 3)+
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(
+    aes(group = Metric),
+    method = "lm",
+    se = FALSE,
+    linewidth = 1.2
+  ) +
+  facet_wrap(~reach, scales = "free_x") +
+    labs(
+    x = "Mean wood accumulation (per area)",
+    #y = "Standardized dynamism (z-score)", removing so it doesn't show up twice in patchwork
+    color = "Dynamism Metric",
+    shape = "Site"
+  ) +
+  theme_bw()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank())
+
+
+## FINAL PLOT
+(avgwood + meanwood_freex) +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right",
+    legend.title = element_text(face = "bold"),
+    legend.key.size = unit(0.4, "cm"),
+    legend.spacing.x = unit(0.2, "cm"),
+    legend.text = element_text(size = 9),
+    legend.box.spacing = unit(0.1, "cm"),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  ) &
+  guides(
+    color = guide_legend(
+      title = "Dynamism Metric",
+      ncol = 1
+    ),
+    shape = guide_legend(
+      title = "Site",
+      ncol = 1,
+      override.aes = list(size = 3)
+    )
+  )
+```
+
 
 # correlation plots and test 
 
