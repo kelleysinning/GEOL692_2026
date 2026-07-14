@@ -296,18 +296,56 @@ p2 <- dynamism_data %>%
 ##### end
 ```
 ```{r simple dynamism plots pt. 2}
-dynamism_slay <- dynamism_data %>%
+dynamism_cubed <- dynamism_data %>%
   pivot_longer(c(sinuosity_dynamism, sdi_dynamism, net_change_dynamism),
                names_to = "Metric",
                values_to = "Value") %>%
   group_by(Metric) %>%
-  mutate(Value_scaled = scale(Value))
+  mutate(Value_scaled = (scale(Value)))
 
-ggplot(dynamism_slay, aes(avg_wood_pieces_per100m, Value_scaled, color = Metric)) +
+ggplot(dynamism_cubed, aes(avg_wood_pieces_per100m, Value_scaled, color = Metric)) +
+  geom_line(size = 1)
+
+ggplot(dynamism_cubed, aes(mean_wood_accum_per_area, Value_scaled, color = Metric)) +
   geom_line(size = 1)
 
 
 
+ggplot(
+  dynamism_cubed,
+  aes(
+    x = avg_wood_pieces_per100m,
+    y = Value_scaled,
+    color = Metric,
+    shape = site
+  )
+) +
+  geom_point(size = 3) +
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  facet_wrap(~reach) +
+  theme_bw()
+
+ggplot(
+  dynamism_cubed,
+  aes(
+    x = mean_wood_accum_per_area,
+    y = Value_scaled,
+    color = Metric,
+    shape = site
+  )
+) +
+  geom_point(size = 3) +
+  #scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  facet_wrap(~reach) +
+  theme_bw()
 
 ```
 
