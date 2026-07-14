@@ -27,8 +27,10 @@ library(MASS)
 ```{r load data, message=FALSE}
 ##### change directory if needed ######
 data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
+setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Wood+/Wood+") # Kelley's working directory
 
 dynamism_data <- read_csv(file.path(data_dir, "Metrics/site_metrics_07022026.csv"))
+dynamism_data <- read_csv("site_metrics_07022026.csv") # Kelley's path
 
 dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
   bind_rows( # also want to add back the mod rock_WA site
@@ -40,6 +42,7 @@ dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate ro
     ) 
 
 data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026.csv"))
+data_byyr <- read_csv("SelectMetricsByYear_07022026.csv") # Kelley's path
 data_byyr <- data_byyr %>% 
   rename(reach = site,
          site = river) %>% 
@@ -48,6 +51,7 @@ data_byyr <- data_byyr %>%
 
 
 all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
+all_data_byyr <- read.csv("ALL_metrics_07022026.csv") # Kelley's path
 all_data_byyr <- all_data_byyr %>% 
   rename(reach = site,
          site = river) %>% 
@@ -291,6 +295,22 @@ p2 <- dynamism_data %>%
   plot_annotation(title = "Net Change Dynamism vs. Avg Wood Metrics")
 ##### end
 ```
+```{r simple dynamism plots pt. 2}
+dynamism_slay <- dynamism_data %>%
+  pivot_longer(c(sinuosity_dynamism, sdi_dynamism, net_change_dynamism),
+               names_to = "Metric",
+               values_to = "Value") %>%
+  group_by(Metric) %>%
+  mutate(Value_scaled = scale(Value))
+
+ggplot(dynamism_slay, aes(avg_wood_pieces_per100m, Value_scaled, color = Metric)) +
+  geom_line(size = 1)
+
+
+
+
+```
+
 
 ## correlation plots and test 
 ### ggpairs uses the pearson correlation test by default
