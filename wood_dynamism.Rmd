@@ -90,6 +90,9 @@ data_byyr %>%
   ggplot(aes(x=ratio_accum_to_ch_area)) +
   geom_density() 
 
+data_byyr %>% 
+  mutate(piece_per_100m = (wood_pieces/channel_length) * 100) %>% 
+  mutate(wood_abund = ratio_accum_to_ch_area + piece_per_100m)
 ```
 
 ## stage 1: wood as a response to site, reach, & time
