@@ -303,15 +303,19 @@ dynamism_cubed <- dynamism_data %>%
   group_by(Metric) %>%
   mutate(Value_scaled = (scale(Value)))
 
+# Good looking plots but lacking detail of site and reach
 ggplot(dynamism_cubed, aes(avg_wood_pieces_per100m, Value_scaled, color = Metric)) +
   geom_line(size = 1)
 
 ggplot(dynamism_cubed, aes(mean_wood_accum_per_area, Value_scaled, color = Metric)) +
   geom_line(size = 1)
 
+# Looking at colorblind friendly color schemes
+rcartocolor::display_carto_all()
+carto_pal(7, "Safe")
 
-
-ggplot(
+# For avg_wood_pieces_per100m
+avgwood <- ggplot(
   dynamism_cubed,
   aes(
     x = avg_wood_pieces_per100m,
@@ -329,7 +333,9 @@ ggplot(
   facet_wrap(~reach) +
   theme_bw()
 
-ggplot(
+
+# For mean_wood_accum_per_area
+meanwood <- ggplot(
   dynamism_cubed,
   aes(
     x = mean_wood_accum_per_area,
@@ -339,13 +345,55 @@ ggplot(
   )
 ) +
   geom_point(size = 3) +
-  #scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
   geom_smooth(aes(group = Metric),
               method = "lm",
               se = FALSE,
               linewidth = 1.2) +
   facet_wrap(~reach) +
   theme_bw()
+
+# Fixing x-axes so you can see them on their own scale
+meanwood_freex <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = mean_wood_accum_per_area,
+    y = Value_scaled,
+    color = Metric,
+    shape = site
+  )
+) +
+  geom_point(size = 3) +
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(
+    aes(group = Metric),
+    method = "lm",
+    se = FALSE,
+    linewidth = 1.2
+  ) +
+  facet_wrap(~reach, scales = "free_x") +
+  theme_bw()
+
+
+(avgwood + meanwood_freex) +
+  plot_annotation(title = "Dynamism vs. Avg Wood Metrics")
+# I should make no_lw on a shorter x axis so we can see the points
+
+library(patchwork)
+
+(avgwood + meanwood_freex) +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
+  theme_bw() &
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
 
 ```
 
