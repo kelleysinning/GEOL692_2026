@@ -22,6 +22,8 @@ library(DHARMa)
 library(lmerTest)
 library(performance)
 library(MASS)
+library(see)
+library(AICcmodavg)
 ```
 
 ```{r load data, message=FALSE}
@@ -44,7 +46,9 @@ data_byyr <- data_byyr %>%
   rename(reach = site,
          site = river) %>% 
   mutate(site_reach = paste0(site,reach)) %>% 
-  mutate(ratio_accum_to_ch_area = accum_area/channel_area)
+  mutate(ratio_accum_to_ch_area = accum_area/channel_area,
+         site = factor(site),
+         reach = factor(reach))
 
 
 all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
@@ -323,35 +327,42 @@ dynamism_data %>%
 
 # Models
 
-## base model for sinuosity
+## models for sinuosity
 "random effects should reflect the design, but complexity should be justified by the amount of information available"
+experimental design is such that reaches are nested within sites to account for multiple observations (across years) at reach_site combinations 
 ```{r sinuosity base model}
 # byyr_mod_data <- data_byyr %>% 
 #   filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
 #   mutate(site = str_replace_all(site, "_[:digit:]$", ""))
 
-data_byyr <- data_byyr %>% 
-  mutate(site = factor(site),
-         reach = factor(reach))
-
 mod_data_byyr <- data_byyr %>% 
-  mutate(ratio_accum_scaled = scale(ratio_accum_to_ch_area),
-         year_c = year - mean(year))
+  mutate(ratio_accum_scaled = scale(ratio_accum_to_ch_area, # scale centers the values around 0 so a value is the # of SD
+                                    center = TRUE, scale = TRUE), 
+         year_c = scale(year, # centers years around a mean value for year
+                        center = TRUE, scale = FALSE))
 
 mod_data_byyr %>% 
   ggplot(aes(x=ratio_accum_scaled)) +
   geom_density()
 
-# simplest model that reflects the hierarchical design of the study 
-base_sin <- lmer(sinuosity ~ year * reach + ratio_accum_to_ch_area + (1|site), data_byyr)
-base_sin_scaled <- lmer(sinuosity ~ year_c * reach + ratio_accum_scaled + (1|site), mod_data_byyr)
+data_byyr %>% 
+  ggplot(aes(x=ratio_accum_to_ch_area)) +
+  geom_density()
 
-plot(simulateResiduals(base_sin_scaled))
-summary(base_sin_scaled)
-coef(base_sin_scaled)
-r2(base_sin_scaled)
+# simplest model that reflects the hierarchical design of the study
+# ratio is continuous and scaled, reach is nested within site which accounts for repeated observations over time?
+base_sin <- lmer(sinuosity ~ ratio_accum_scaled + (1|site) + (1|reach:site), mod_data_byyr)
 
-site_intercepts <- coef(base_sin_scaled)$site$"(Intercept)"
+summary(base_sin)
+
+plot(simulateResiduals(base_sin))
+check_model(base_sin)
+summary(base_sin)
+coef(base_sin)
+r2(base_sin)
+
+AICc(base_sin)
+AIC(base_sin)
 
 mod_data_byyr %>% 
   ggplot(aes(x=ratio_accum_scaled, y=sinuosity, color = site)) +
@@ -361,11 +372,24 @@ mod_data_byyr %>%
   geom_abline(slope = (0.2127-0.2605), intercept = 2.758, color = "red") +
   geom_smooth(formula = y ~ x)
 
-mod_data_byyr %>% 
-  ggplot(aes(x=ratio_accum_scaled, y=sinuosity, color = site_reach)) +
-  geom_point() +
-  geom_smooth(formula = y ~ x)
 
+base_sin_int <- lmer(sinuosity ~ reach * ratio_accum_scaled + (1|site), mod_data_byyr)
+
+plot(simulateResiduals(base_sin_int))
+check_model(base_sin_int)
+summary(base_sin_int)
+coef(base_sin_int)
+r2(base_sin_int)
+
+
+# reach is a random effect nested within the random effect of site
+base_sin_rand <- lmer(sinuosity ~ ratio_accum_scaled + (1|site) + (1|reach:site), mod_data_byyr)
+
+plot(simulateResiduals(base_sin_rand))
+check_model(base_sin_rand)
+summary(base_sin_int)
+coef(base_sin_int)
+r2(base_sin_int)
 ```
 
 
