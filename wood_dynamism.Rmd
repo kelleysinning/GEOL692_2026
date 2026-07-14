@@ -316,24 +316,28 @@ p2 <- dynamism_data %>%
 ```
 
 ```{r simple dynamism plots pt. 2}
+library(grid)
+library(rcartocolor)
+library(dplyr)
+library(patchwork)
+
+## CLEANING UP
 # Adjusting so all 3 metrics can be plotted on same graph
 dynamism_cubed <- dynamism_data %>%
   pivot_longer(c(sinuosity_dynamism, sdi_dynamism, net_change_dynamism),
                names_to = "Metric",
                values_to = "Value") %>%
   group_by(Metric) %>%
-  mutate(Value_scaled = (scale(Value)))
+  mutate(Value_scaled = (scale(Value))) # calculated a separate z-score for each dynamism metric
+  # will show dynamism values relative to each other
 
-## CLEANING UP
+# Essentially, does wood accumulation change dynamism relative to it's normal range?
+
 # Looking at colorblind friendly color schemes
-library(rcartocolor)
 rcartocolor::display_carto_all()
-
 carto_pal(7, "Fall")
 
 # Renaming labels
-library(dplyr)
-
 dynamism_cubed <- dynamism_cubed %>%
   mutate(
     Metric = recode(
@@ -362,8 +366,7 @@ avgwoodpieces <- ggplot(
   aes(
     x = avg_wood_pieces_per100m,
     y = Value_scaled,
-    color = Metric,
-    shape = site
+    color = Metric
   )
 ) +
   scale_color_manual(values = c(
@@ -371,7 +374,9 @@ avgwoodpieces <- ggplot(
   "SDI" = "#DE8A5A",
   "Net Channel Change" = "#E15759"
   ))+
-  geom_point(size = 3) +
+ geom_point(
+    aes(shape = site),
+    size = 3)+
   scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
   geom_smooth(aes(group = Metric),
               method = "lm",
@@ -393,8 +398,7 @@ meanwood <- ggplot(
   aes(
     x = mean_wood_accum_per_area,
     y = Value_scaled,
-    color = Metric,
-    shape = site
+    color = Metric
   )
 ) +
   scale_color_manual(values = c(
@@ -402,7 +406,9 @@ meanwood <- ggplot(
   "SDI" = "#DE8A5A",
   "Net Channel Change" = "#E15759"
   ))+
-  geom_point(size = 3) +
+ geom_point(
+    aes(shape = site),
+    size = 3)+
   scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
   geom_smooth(aes(group = Metric),
               method = "lm",
@@ -416,14 +422,13 @@ meanwood <- ggplot(
     shape = "Site")+
   theme_bw()
 
-# Fixing x-axes so you can see them on their own scale
+# Fixing x-axes so you can see them on their own scale since it's wacky in the above
 meanwood_freex <- ggplot(
   dynamism_cubed,
   aes(
     x = mean_wood_accum_per_area,
     y = Value_scaled,
-    color = Metric,
-    shape = site,
+    color = Metric
   )
 ) +
   scale_color_manual(values = c(
@@ -431,7 +436,9 @@ meanwood_freex <- ggplot(
   "SDI" = "#DE8A5A",
   "Net Channel Change" = "#E15759"
   ))+
-  geom_point(size = 3) +
+ geom_point(
+    aes(shape = site),
+    size = 3)+
   scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
   geom_smooth(
     aes(group = Metric),
@@ -452,28 +459,8 @@ meanwood_freex <- ggplot(
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank())
 
-(avgwoodpieces + meanwood_freex) +
-  plot_annotation(title = "Dynamism vs. Avg Wood Metrics")
-# I should make no_lw on a shorter x axis so we can see the points
 
-library(patchwork)
-
-(avgwood + meanwood_freex) +
-  plot_layout(guides = "collect") +
-  plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    strip.background = element_blank(),
-    strip.text = element_text(face = "bold"),
-    plot.title = element_text(face = "bold", hjust = 0.5)
-  )
-
-library(grid)
-library(grid)
-
+## FINAL PLOT
 (avgwood + meanwood_freex) +
   plot_layout(guides = "collect") +
   plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
