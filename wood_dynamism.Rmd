@@ -510,59 +510,91 @@ dynamism_data %>%
 
 # Models
 
-## models for sinuosity
 "random effects should reflect the design, but complexity should be justified by the amount of information available"
 experimental design is such that reaches are nested within sites to account for multiple observations (across years) at reach_site combinations 
-```{r sinuosity base model}
-# byyr_mod_data <- data_byyr %>% 
-#   filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
-#   mutate(site = str_replace_all(site, "_[:digit:]$", ""))
 
+```{r create model df}
 mod_data_byyr <- data_byyr %>% 
-  mutate(ratio_accum_scaled = scale(ratio_accum_to_ch_area, # scale centers the values around 0 so a value is the # of SD
-                                    center = TRUE, scale = TRUE), 
-         year_c = scale(year, # centers years around a mean value for year
-                        center = TRUE, scale = FALSE))
+  mutate(ratio_accum_scaled = scale(ratio_accum_to_ch_area, 
+                                    center = TRUE, # centers ratio values around mean ratio which is then set to 0 
+                                    scale = TRUE), # scale changes a value to the # of sd from the mean value
+         year_c = scale(year, # centers years around a mean (set to 0) value for year, makes for a more interpretable effect
+                        center = TRUE, scale = FALSE)) %>% 
+  filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
+  mutate(site = str_replace_all(site, "_[:digit:]$", ""))
+```
 
-mod_data_byyr %>% 
-  ggplot(aes(x=ratio_accum_scaled)) +
-  geom_density()
+## modeling notes
+- AICc is preferred for small sample sizes which is when the number of data points / number of parameters < 40 (n/k < 40)
+but it's good to be consistent across models so if we get to a model with n/k < 40 we'll compare with AICc
+- all of our response variables are not normally distributed so we're using a generalized linear mixed model with a Gamma family and log link unless otherwise stated
 
-data_byyr %>% 
-  ggplot(aes(x=ratio_accum_to_ch_area)) +
-  geom_density()
+## models for sinuosity
+```{r sinuosity null model}
+## null model: random effect of site only reflects hierarchical design 
+# this will estimate a random intercept of sinuosity for every site (i.e. mean sinuosity per site)
+null_sin <- glmer(sinuosity ~ (1|site), mod_data_byyr, family = Gamma(link = "log"))
 
+## model diagnostics with DHARMa & performance packages
+# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
+plot(DHARMa::simulateResiduals(null_sin))
+# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
+performance::check_model(null_sin)
+
+## model summary
+summary(null_sin)
+coef(null_sin)
+r2(null_sin)
+AICc(null_sin)
+
+## plot the null model
+# create plotting df with our sampled and estimated site means
+plot_null_sin <- mod_data_byyr %>% 
+  group_by(site) %>% 
+  summarize(sampled = mean(sinuosity)) %>% 
+  mutate(estimated = exp(coef(null_sin)$site$"(Intercept)"))
+
+# solid lines are sampled means, dashed lines are estimated means
+ggplot(mod_data_byyr) +
+  geom_point(aes(x = ratio_accum_scaled, y = sinuosity, color = site)) +
+  geom_hline(aes(yintercept = sampled, color = site), plot_null_sin) +
+  geom_hline(aes(yintercept = estimated, color = site), plot_null_sin, linetype = "dashed") 
+```
+
+```{r sinuosity alt model}
 # simplest model that reflects the hierarchical design of the study
-# ratio is continuous and scaled, reach is nested within site which accounts for repeated observations over time?
-base_sin <- lmer(sinuosity ~ ratio_accum_scaled + (1|site) + (1|reach:site), mod_data_byyr)
+# ratio is continuous and scaled, site  accounts for repeated observations 
+m1_sin <- glmer(sinuosity ~ ratio_accum_scaled + (1|site), mod_data_byyr, family = Gamma(link = "log"))
 
-summary(base_sin)
+## model diagnostics with DHARMa & performance packages
+# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
+plot(DHARMa::simulateResiduals(m1_sin))
+# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
+performance::check_model(m1_sin)
 
-plot(simulateResiduals(base_sin))
-check_model(base_sin)
-summary(base_sin)
-coef(base_sin)
-r2(base_sin)
+## model summary
+summary(m1_sin)
+coef(m1_sin)
+r2(m1_sin)
+AICc(m1_sin)
 
-AICc(base_sin)
-AIC(base_sin)
+## plot the null model
+# create plotting df with our sampled and estimated site means
+plot_m1_sin <- rownames_to_column(coef(m1_sin)$site, var = "site") %>% 
+  rename(intercept = "(Intercept)") %>% 
+  mutate(intercept = exp(intercept),
+         ratio_accum_scaled = exp(ratio_accum_scaled))
 
-mod_data_byyr %>% 
-  ggplot(aes(x=ratio_accum_scaled, y=sinuosity, color = site)) +
-  geom_point() +
-  geom_line(aes(group = site_reach)) +
-  geom_abline(slope = 0.2127, intercept = 2.758) +
-  geom_abline(slope = (0.2127-0.2605), intercept = 2.758, color = "red") +
-  geom_smooth(formula = y ~ x)
+# solid lines are sampled means, dashed lines are estimated means
+ggplot(mod_data_byyr) +
+  geom_point(aes(x = ratio_accum_scaled, y = sinuosity, color = site)) +
+  geom_abline(aes(slope = ratio_accum_scaled, intercept = intercept, color = site), plot_m1_sin) +
+  geom_smooth(aes(x = ratio_accum_scaled, y=sinuosity, color = site), 
+              formula = y ~ exp(x), method = "glm", method.args = list(family = "Gamma"))
 
+plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
 
-base_sin_int <- lmer(sinuosity ~ reach * ratio_accum_scaled + (1|site), mod_data_byyr)
-
-plot(simulateResiduals(base_sin_int))
-check_model(base_sin_int)
-summary(base_sin_int)
-coef(base_sin_int)
-r2(base_sin_int)
+plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random"))
 
 
 # reach is a random effect nested within the random effect of site
