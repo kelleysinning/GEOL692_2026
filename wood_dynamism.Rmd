@@ -24,6 +24,8 @@ library(performance)
 library(MASS)
 library(see)
 library(AICcmodavg)
+library(ggeffects)
+library(sjPlot)
 ```
 
 ```{r load data, message=FALSE}
@@ -525,8 +527,7 @@ mod_data_byyr <- data_byyr %>%
 ```
 
 ## modeling notes
-- AICc is preferred for small sample sizes which is when the number of data points / number of parameters < 40 (n/k < 40)
-but it's good to be consistent across models so if we get to a model with n/k < 40 we'll compare with AICc
+- AICc is preferred for small sample sizes which is when the number of data points / number of parameters < 40 (n/k < 40). we have 126 observations, which for the null model means we're not in the small sample size world (k=3), but for all other models we are because we have to estimate at least 4 parameters. it's good to use the same criteria across models so we'll use AICc for all. the aictab function in the AICcmodavg does this for us.  
 - all of our response variables are not normally distributed so we're using a generalized linear mixed model with a Gamma family and log link unless otherwise stated
 
 ## models for sinuosity
@@ -561,7 +562,7 @@ ggplot(mod_data_byyr) +
   geom_hline(aes(yintercept = estimated, color = site), plot_null_sin, linetype = "dashed") 
 ```
 
-```{r sinuosity alt model}
+```{r sinuosity alt model 1}
 # simplest model that reflects the hierarchical design of the study
 # ratio is continuous and scaled, site  accounts for repeated observations 
 m1_sin <- glmer(sinuosity ~ ratio_accum_scaled + (1|site), mod_data_byyr, family = Gamma(link = "log"))
@@ -596,17 +597,52 @@ plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random",
 
 plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random"))
 
+plot_model(m1_sin, type = "re")
+plot_model(m1_sin, type = "pred")
+plot_model(m1_sin, type = "est")
+plot_residuals(m1_sin)
 
-# reach is a random effect nested within the random effect of site
-base_sin_rand <- lmer(sinuosity ~ ratio_accum_scaled + (1|site) + (1|reach:site), mod_data_byyr)
-
-plot(simulateResiduals(base_sin_rand))
-check_model(base_sin_rand)
-summary(base_sin_int)
-coef(base_sin_int)
-r2(base_sin_int)
 ```
 
+```{r sinuosity alt model 2}
+# reach is a random effect nested within the random effect of site
+m2_sin <- glmer(sinuosity ~ ratio_accum_scaled + year_c + (1|site), mod_data_byyr, family = Gamma(link = "log"))
+
+# model diagnostics with DHARMa & performance packages
+# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
+plot(DHARMa::simulateResiduals(m2_sin))
+# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
+performance::check_model(m2_sin)
+
+## model summary
+summary(m2_sin)
+coef(m2_sin)
+r2(m2_sin)
+AICc(m2_sin)
+
+plot(ggpredict(m2_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
+```
+```{r sinuosity alt model 3}
+# reach is a random effect nested within the random effect of site
+m3_sin <- glmer(sinuosity ~ ratio_accum_scaled * year_c + (1|site), mod_data_byyr, family = Gamma(link = "log"))
+
+# model diagnostics with DHARMa & performance packages
+# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
+plot(DHARMa::simulateResiduals(m3_sin))
+# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
+performance::check_model(m3_sin)
+
+## model summary
+summary(m3_sin)
+coef(m3_sin)
+r2(m3_sin)
+AICc(m3_sin)
+
+plot(ggpredict(m3_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
+
+cand.set <- list(null_sin, m1_sin, m2_sin, m3_sin)
+aictab(list(null_sin, m1_sin, m2_sin, m3_sin), modnames = c("null_sim","m1_sin","m2_sin","m3_sin"))
+```
 
 ## stage 3: sensitivity
 
