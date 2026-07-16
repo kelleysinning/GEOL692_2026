@@ -324,7 +324,7 @@ library(patchwork)
 ## CLEANING UP
 # Adjusting so all 3 metrics can be plotted on same graph
 dynamism_cubed <- dynamism_data %>%
-  pivot_longer(c(sinuosity_dynamism, sdi_dynamism, net_change_dynamism),
+  pivot_longer(c(complexity_dynamism,sinuosity_dynamism, sdi_dynamism, net_change_dynamism),
                names_to = "Metric",
                values_to = "Value") %>%
   group_by(Metric) %>%
@@ -335,13 +335,14 @@ dynamism_cubed <- dynamism_data %>%
 
 # Looking at colorblind friendly color schemes
 rcartocolor::display_carto_all()
-carto_pal(7, "Fall")
+carto_pal(7, "Earth")
 
 # Renaming labels
 dynamism_cubed <- dynamism_cubed %>%
   mutate(
     Metric = recode(
       Metric,
+      complexity_dynamism = "Complexity",
       sinuosity_dynamism = "Sinuosity",
       sdi_dynamism = "SDI",
       net_change_dynamism = "Net Channel Change"
@@ -353,15 +354,36 @@ dynamism_cubed <- dynamism_cubed %>%
     ))
     
 ## PLOTS
-# Good looking plots but lacking detail of site and reach
+
+# Mean wood pieces (pooled)
 ggplot(dynamism_cubed, aes(avg_wood_pieces_per100m, Value_scaled, color = Metric)) +
-  geom_line(size = 1)
+  geom_line(size = 1) +
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "SDI" = "#DE8A5A",
+  "Net Channel Change" = "#E15759"
+  )) +
+  labs(x = "Mean wood pieces (per 100m)",
+    y = "Standardized dynamism (z-score)") +
+  theme_classic()
 
+# Mean wood accumulation (pooled)
 ggplot(dynamism_cubed, aes(mean_wood_accum_per_area, Value_scaled, color = Metric)) +
-  geom_line(size = 1)
+  geom_line(size = 1)+
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "SDI" = "#DE8A5A",
+  "Net Channel Change" = "#E15759"
+  )) +
+  labs(x = "Mean wood accumulation (per area)",
+    y = "Standardized dynamism (z-score)") +
+  theme_classic()
 
-# For avg_wood_pieces_per100m
-avgwoodpieces <- ggplot(
+## COMBO PLOT
+# Mean wood peices across site and reach
+meanwoodpieces <- ggplot(
   dynamism_cubed,
   aes(
     x = avg_wood_pieces_per100m,
@@ -370,6 +392,7 @@ avgwoodpieces <- ggplot(
   )
 ) +
   scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
   "Sinuosity" = "#70A494",
   "SDI" = "#DE8A5A",
   "Net Channel Change" = "#E15759"
@@ -383,7 +406,7 @@ avgwoodpieces <- ggplot(
               se = FALSE,
               linewidth = 1.2) +
   facet_wrap(~reach) +
-    facet_wrap(~reach, scales = "free_x") +
+    facet_wrap(~reach, scales = "free_x") + # delete scale = "free_x" if you want each reach on the same scale
     labs(
     x = "Mean wood pieces (per 100m)",
     y = "Standardized dynamism (z-score)",
@@ -392,8 +415,8 @@ avgwoodpieces <- ggplot(
   theme_bw()
 
 
-# For mean_wood_accum_per_area
-meanwood <- ggplot(
+# Mean wood accumulation across site and reach
+meanwoodaccum <- ggplot(
   dynamism_cubed,
   aes(
     x = mean_wood_accum_per_area,
@@ -402,6 +425,7 @@ meanwood <- ggplot(
   )
 ) +
   scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
   "Sinuosity" = "#70A494",
   "SDI" = "#DE8A5A",
   "Net Channel Change" = "#E15759"
@@ -414,54 +438,22 @@ meanwood <- ggplot(
               method = "lm",
               se = FALSE,
               linewidth = 1.2) +
-    facet_wrap(~reach, scales = "free_x") +
+    facet_wrap(~reach, scales = "free_x") + # delete scale = "free_x" if you want on the same scale
     labs(
     x = "Mean wood accumulation (per area)",
     y = "Standardized dynamism (z-score)",
     color = "Dynamism Metric",
     shape = "Site")+
-  theme_bw()
-
-# Fixing x-axes so you can see them on their own scale since it's wacky in the above
-meanwood_freex <- ggplot(
-  dynamism_cubed,
-  aes(
-    x = mean_wood_accum_per_area,
-    y = Value_scaled,
-    color = Metric
-  )
-) +
-  scale_color_manual(values = c(
-  "Sinuosity" = "#70A494",
-  "SDI" = "#DE8A5A",
-  "Net Channel Change" = "#E15759"
-  ))+
- geom_point(
-    aes(shape = site),
-    size = 3)+
-  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
-  geom_smooth(
-    aes(group = Metric),
-    method = "lm",
-    se = FALSE,
-    linewidth = 1.2
-  ) +
-  facet_wrap(~reach, scales = "free_x") +
-    labs(
-    x = "Mean wood accumulation (per area)",
-    #y = "Standardized dynamism (z-score)", removing so it doesn't show up twice in patchwork
-    color = "Dynamism Metric",
-    shape = "Site"
-  ) +
   theme_bw()+
   theme(
     axis.title.y = element_blank(),
     axis.text.y = element_blank(),
-    axis.ticks.y = element_blank())
+    axis.ticks.y = element_blank()
+  )
 
 
 ## FINAL PLOT
-(avgwood + meanwood_freex) +
+(meanwoodpieces + meanwoodaccum) +
   plot_layout(guides = "collect") +
   plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
   theme(
@@ -488,6 +480,109 @@ meanwood_freex <- ggplot(
       override.aes = list(size = 3)
     )
   )
+
+
+
+## NOW, ON THE SAME X SCALE
+
+meanwoodpieces_samex <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = avg_wood_pieces_per100m,
+    y = Value_scaled,
+    color = Metric
+  )
+) +
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "SDI" = "#DE8A5A",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = site),
+    size = 3)+
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  facet_wrap(~reach) +
+    facet_wrap(~reach) + # delete scale = "free_x" if you want each reach on the same scale
+    labs(
+    x = "Mean wood pieces (per 100m)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  theme_bw()
+
+
+# Mean wood accumulation across site and reach
+meanwoodaccum_samex <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = mean_wood_accum_per_area,
+    y = Value_scaled,
+    color = Metric
+  )
+) +
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "SDI" = "#DE8A5A",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = site),
+    size = 3)+
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+    facet_wrap(~reach) + 
+    labs(
+    x = "Mean wood accumulation (per area)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  theme_bw()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+## FINAL PLOT
+(meanwoodpieces_samex + meanwoodaccum_samex) +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right",
+    legend.title = element_text(face = "bold"),
+    legend.key.size = unit(0.4, "cm"),
+    legend.spacing.x = unit(0.2, "cm"),
+    legend.text = element_text(size = 9),
+    legend.box.spacing = unit(0.1, "cm"),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  ) &
+  guides(
+    color = guide_legend(
+      title = "Dynamism Metric",
+      ncol = 1
+    ),
+    shape = guide_legend(
+      title = "Site",
+      ncol = 1,
+      override.aes = list(size = 3)
+    )
+  )
+
 ```
 
 
