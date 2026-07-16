@@ -28,14 +28,25 @@ library(ggeffects)
 library(sjPlot)
 ```
 
-```{r load data, message=FALSE}
-## change directory if needed ##
-data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
+```{r kelley load data, message = FALSE}
 setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Wood+/Wood+") # Kelley's working directory
 
-dynamism_data <- read_csv(file.path(data_dir, "Metrics/site_metrics_07022026.csv"))
 dynamism_data <- read_csv("site_metrics_07022026.csv") # Kelley's path
+data_byyr <- read_csv("SelectMetricsByYear_07022026.csv") # Kelley's path
+all_data_byyr <- read.csv("ALL_metrics_07022026.csv") # Kelley's path
+```
 
+```{r noel load data, message = FALSE}
+## change directory if needed ##
+data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
+
+dynamism_data <- read_csv(file.path(data_dir, "Metrics/site_metrics_07022026.csv"))
+data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026.csv"))
+all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
+```
+
+```{r clean loaded data}
+## this should work after you run the right version of data loading above
 dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
   bind_rows( # also want to add back the mod rock_WA site
     dynamism_data %>% slice(6) %>% 
@@ -45,8 +56,6 @@ dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate ro
         ))
     ) 
 
-data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026.csv"))
-data_byyr <- read_csv("SelectMetricsByYear_07022026.csv") # Kelley's path
 data_byyr <- data_byyr %>% 
   rename(reach = site,
          site = river) %>% 
@@ -56,9 +65,6 @@ data_byyr <- data_byyr %>%
          site = factor(site),
          reach = factor(reach))
 
-
-all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
-all_data_byyr <- read.csv("ALL_metrics_07022026.csv") # Kelley's path
 all_data_byyr <- all_data_byyr %>% 
   rename(reach = site,
          site = river) %>% 
@@ -174,39 +180,39 @@ dynamism_data %>%
 ## stage 2: how do sinuosity, complexity, and sdi change as a function of standardized wood?
 
 visualizing relationship between response v predictor (ratio_accum_to_ch_area)
-within a site_reach combo the relationship is linear-ish? 
+within a site the relationship is linear-ish? 
 ```{r visualize sin comp and sdi v wood}
 data_byyr %>% 
   ggplot(aes(x=ratio_accum_to_ch_area, y=sinuosity, color = site, shape = reach)) +
   geom_point() +
-  geom_line(aes(group=site_reach))
+  geom_line(aes(group=site))
 
 data_byyr %>% 
   ggplot(aes(x=ratio_accum_to_ch_area, y=complexity, color = site, shape = reach)) +
   geom_point() +
-  geom_line(aes(group=site_reach))
+  geom_line(aes(group=site))
 
 data_byyr %>% 
   ggplot(aes(x=ratio_accum_to_ch_area, y=sdi, color = site, shape = reach)) +
   geom_point() +
-  geom_line(aes(group=site_reach))
+  geom_line(aes(group=site))
 
 
 ## wood piece_per_100m
 data_byyr %>% 
   ggplot(aes(x=piece_per_100m, y=sinuosity, color = site, shape = reach)) +
   geom_point() +
-  geom_line(aes(group=site_reach))
+  geom_line(aes(group=site))
 
 data_byyr %>% 
   ggplot(aes(x=piece_per_100m, y=complexity, color = site, shape = reach)) +
   geom_point() +
-  geom_line(aes(group=site_reach))
+  geom_line(aes(group=site))
 
 data_byyr %>% 
   ggplot(aes(x=piece_per_100m, y=sdi, color = site, shape = reach)) +
   geom_point() +
-  geom_line(aes(group=site_reach))
+  geom_line(aes(group=site))
 ```
 
 channel values by site
@@ -375,8 +381,8 @@ dynamism_cubed <- dynamism_data %>%
 # Essentially, does wood accumulation change dynamism relative to it's normal range?
 
 # Looking at colorblind friendly color schemes
-rcartocolor::display_carto_all()
-carto_pal(7, "Earth")
+#rcartocolor::display_carto_all()
+#carto_pal(7, "Earth")
 
 # Renaming labels
 dynamism_cubed <- dynamism_cubed %>%
@@ -682,6 +688,9 @@ m4_sin <- glmer(sinuosity ~ ratio_accum_scaled * piece_100m_scaled + (1|site), m
 
 ## models with more complicated random effects structure
 # these calculate both a random intercept and a random slope within a site
+# which on second thought I don't think we actually want 
+# because sites are considered a "random" sample of the global population of sites 
+# and we're interested in the effect of wood across this global population of sites, not within sites?
 m5_sin <- glmer(sinuosity ~ ratio_accum_scaled + (1 + ratio_accum_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
 m6_sin <- glmer(sinuosity ~ piece_100m_scaled + (1 + piece_100m_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
 
@@ -691,36 +700,92 @@ m9_sin <- glmer(sinuosity ~ ratio_accum_scaled + piece_100m_scaled + (1 + piece_
 m10_sin <- glmer(sinuosity ~ ratio_accum_scaled * piece_100m_scaled + (1 + piece_100m_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
 
 # full candidate set of models
-cand.set <- list(null_sin, m1_sin, m2_sin, m3_sin, m4_sin, m5_sin, m6_sin, m7_sin, m8_sin, m9_sin, m10_sin)
+# currently does not include the more complicated random effect structure
+cand.set <- list(null_sin, m1_sin, m2_sin, m3_sin, m4_sin)
 
 ```
 
-```{r check candidate sinuosity models}
+```{r DHARMa checks for candidate sinuosity models}
 ## model diagnostics with DHARMa & performance packages
 # Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
-sim_resids <- purrr::map(cand.set, ~DHARMa::simulateResiduals(fittedModel = .x))
+sim_resids <- purrr::map(cand.set, 
+                         ~DHARMa::simulateResiduals(fittedModel = .x), 
+                         .progress = FALSE)
 
 # plotting QQ plot and predicted vs residuals
-purrr::map(sim_resids, ~plot(.x, quantreg = FALSE))
-
-# plotting just residuals
-purrr::map(sim_resids, ~plot(residuals(.x)))
+# obviously, the predicted vs residuals plots look a lil weird
+purrr::map(sim_resids, 
+           ~plot(.x, quantreg = FALSE),
+           .progress = FALSE)
 
 # recalc residuals aggregated by site
-recal_sim_resids <- purrr::map(sim_resids, ~DHARMa::recalculateResiduals(.x, group = ~site))
+recal_sim_resids <- purrr::map(sim_resids, 
+                               ~DHARMa::recalculateResiduals(.x, group = ~site),
+                               .progress = FALSE)
 
-purrr::map(recal_sim_resids, ~plot(.x, quantreg = FALSE))
-purrr::map(recal_sim_resids, ~plot(residuals(.x)))
+# plotting QQ plot and predicted vs residuals aggregated by site
+# makes for a low sample size of residuals 
+#purrr::map(recal_sim_resids, ~plot(.x, quantreg = FALSE))
 
+# plotting just residuals, 
+
+resid_df <- map2_dfr(
+  sim_resids,
+  paste0(seq_along(sim_resids)),
+  ~ tibble(
+    model = .y,
+    index = seq_along(residuals(.x)),
+    residual = residuals(.x)
+  )
+) %>% 
+  mutate(model = case_when(
+    model == "1" ~ "null_sin",
+    model == "2" ~ "m1_sin",
+    model == "3" ~ "m2_sin",
+    model == "4" ~ "m3_sin",
+    model == "5" ~ "m4_sin"
+  ))
+
+recal_resid_df <- map2_dfr(
+  recal_sim_resids,
+  paste0(seq_along(recal_sim_resids)),
+  ~ tibble(
+    model = .y,
+    site = seq_along(residuals(.x)),
+    residual = residuals(.x)
+  )
+) %>% 
+  mutate(model = case_when(
+    model == "1" ~ "null_sin",
+    model == "2" ~ "m1_sin",
+    model == "3" ~ "m2_sin",
+    model == "4" ~ "m3_sin",
+    model == "5" ~ "m4_sin"
+  ))
+
+ggplot(resid_df, aes(index, residual, color = model)) +
+  geom_point() 
+
+ggplot(recal_resid_df, aes(site, residual, color = model)) +
+  geom_point() 
+```
+
+```{r performance checks for candidate sinuosity models}
 # plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
-purrr::map(cand.set, ~performance::check_model(.x))
+# some of the models have flat-ish reference lines for homogeneity of variance
+performance::check_model(null_sin)
+performance::check_model(m1_sin)
+performance::check_model(m2_sin)
+performance::check_model(m3_sin)
+performance::check_model(m4_sin)
+
+# acting unstable for some reason, think the plots are too mem heavy for map
+# purrr::map(cand.set, ~performance::check_model(.x))
 ```
 
 ```{r sinuosity model selection}
-AICcmodavg::aictab(cand.set, modnames = c("null_sim","m1_sin","m2_sin","m3_sin", "m4_sin", "m5_sin", 
-                                         "m6_sin", "m7_sin","m8_sin","m9_sin", "m10_sin"))
+AICcmodavg::aictab(cand.set, modnames = c("null_sim","m1_sin","m2_sin","m3_sin", "m4_sin"))
 
-tab_model(m7_sin)
 tab_model(m1_sin)
 ```
 
@@ -739,49 +804,44 @@ tab_model(m1_sin)
 #   geom_hline(aes(yintercept = estimated, color = site), plot_null_sin, linetype = "dashed") 
 
 # plot model predictions example
-plot(ggpredict(m7_sin, terms = c("ratio_accum_scaled", "piece_100m_scaled", "site"), type = "random", bias_correction = TRUE))
-plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
+plot(
+  ggpredict(
+    m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE
+    )
+  ) +
+  geom_point(
+    data = mod_data_byyr,
+    aes(x = ratio_accum_scaled, y = sinuosity, color = site),
+    alpha = 0.5, inherit.aes = FALSE
+  ) +
+  labs(title = "predicted & observed values of sinuosity")
+
 ```
 
+## models 
+```{r specify all models together possibly}
+responses <- c("sinuosity", "complexity", "sdi")
 
-## models for complexity
-```{r complexity null model}
-mod_data_byyr %>% 
-  ggplot(aes(x=complexity)) +
-  geom_density()
+fit_candidates <- function(response, data) {
+  list(
+    null = glmer(reformulate("(1|site)", response), 
+                 data, family = Gamma("log")),
+    m1   = glmer(reformulate("ratio_accum_scaled + (1|site)", response), 
+                 data, family = Gamma("log")),
+    m2   = glmer(reformulate("piece_100m_scaled + (1|site)", response), 
+                 data, family = Gamma("log")),
+    m3   = glmer(reformulate("ratio_accum_scaled + piece_100m_scaled + (1|site)", response), 
+                 data, family = Gamma("log")),
+    m4   = glmer(reformulate("ratio_accum_scaled * piece_100m_scaled + (1|site)", response), 
+                 data, family = Gamma("log"))
+  )
+}
 
-mod_data_byyr %>% 
-  ggplot(aes(x=sdi)) +
-  geom_density()
+models <- map(set_names(responses), fit_candidates, data = mod_data_byyr)
 
-## null model: random effect of site only reflects hierarchical design 
-# this will estimate a random intercept of sinuosity for every site (i.e. mean sinuosity per site)
-null_sin <- glmer(complexity ~ (1|site), mod_data_byyr, family = Gamma(link = "log"))
-
-## model diagnostics with DHARMa & performance packages
-# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
-plot(DHARMa::simulateResiduals(null_sin))
-# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
-performance::check_model(null_sin)
-
-## model summary
-summary(null_sin)
-coef(null_sin)
-r2(null_sin)
-AICc(null_sin)
-
-## plot the null model
-# create plotting df with our sampled and estimated site means
-plot_null_sin <- mod_data_byyr %>% 
-  group_by(site) %>% 
-  summarize(sampled = mean(sinuosity)) %>% 
-  mutate(estimated = exp(coef(null_sin)$site$"(Intercept)"))
-
-# solid lines are sampled means, dashed lines are estimated means
-ggplot(mod_data_byyr) +
-  geom_point(aes(x = ratio_accum_scaled, y = sinuosity, color = site)) +
-  geom_hline(aes(yintercept = sampled, color = site), plot_null_sin) +
-  geom_hline(aes(yintercept = estimated, color = site), plot_null_sin, linetype = "dashed") 
+AICcmodavg::aictab(models$sinuosity)
+AICcmodavg::aictab(models$complexity)
+AICcmodavg::aictab(models$sdi)
 ```
 
 
