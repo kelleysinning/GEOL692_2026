@@ -502,7 +502,7 @@ meanwood_freex <- ggplot(
 
 
 ## FINAL PLOT
-(avgwood + meanwood_freex) +
+(meanwood + meanwood_freex) +
   plot_layout(guides = "collect") +
   plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
   theme(
