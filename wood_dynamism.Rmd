@@ -558,7 +558,6 @@ meanwoodpieces_samex <- ggplot(
   theme_bw()
 
 
-# Mean wood accumulation across site and reach
 meanwoodaccum_samex <- ggplot(
   dynamism_cubed,
   aes(
@@ -597,8 +596,6 @@ meanwoodaccum_samex <- ggplot(
     axis.ticks.y = element_blank()
   )
 
-
-## FINAL PLOT
 (meanwoodpieces_samex + meanwoodaccum_samex) +
   plot_layout(guides = "collect") +
   plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
