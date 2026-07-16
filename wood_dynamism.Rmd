@@ -577,6 +577,9 @@ meanwoodaccum_samex <- ggplot(
     aes(shape = site),
     size = 3)+
   scale_shape_manual(values = c(16, 17, 15, 18, 3, 8, 4)) +
+  scale_x_continuous(
+  labels = scales::label_number(accuracy = 0.1) # putting this panel to the same decimal point as mean wood peices
+)+
   geom_smooth(aes(group = Metric),
               method = "lm",
               se = FALSE,
@@ -596,11 +599,7 @@ meanwoodaccum_samex <- ggplot(
 
 
 ## FINAL PLOT
-<<<<<<< HEAD
 (meanwoodpieces_samex + meanwoodaccum_samex) +
-=======
-(meanwood + meanwood_freex) +
->>>>>>> 1b475387a05f36ddb61d136fe5226cbf76e17707
   plot_layout(guides = "collect") +
   plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
   theme(
