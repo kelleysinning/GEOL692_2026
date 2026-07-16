@@ -52,6 +52,7 @@ data_byyr <- data_byyr %>%
          site = river) %>% 
   mutate(site_reach = paste0(site,reach)) %>% 
   mutate(ratio_accum_to_ch_area = accum_area/channel_area,
+         piece_per_100m = (wood_pieces/channel_length)*100,
          site = factor(site),
          reach = factor(reach))
 
@@ -96,9 +97,9 @@ data_byyr %>%
   ggplot(aes(x=ratio_accum_to_ch_area)) +
   geom_density() 
 
-data_byyr %>% 
-  mutate(piece_per_100m = (wood_pieces/channel_length) * 100) %>% 
-  mutate(wood_abund = ratio_accum_to_ch_area + piece_per_100m)
+data_byyr %>%  
+  ggplot(aes(x=piece_per_100m)) +
+  geom_density() 
 ```
 
 ## stage 1: wood as a response to site, reach, & time
@@ -109,7 +110,7 @@ data_byyr %>%
   geom_point() +
   geom_line(aes(group = site_reach))
 
-# how does the difference between standardized wood change within a site (between reaches) over time?
+# how does the difference between standardized wood change within a site (between reaches) over time? (diff = LW - noLW)
 data_byyr %>%
   group_by(site, year) %>% 
   arrange_all(by_group = "reach") %>% 
@@ -117,6 +118,24 @@ data_byyr %>%
   dplyr::select(site, year, accum_ratio_diff) %>% 
   drop_na(accum_ratio_diff) %>% 
   ggplot(aes(x=year, y=accum_ratio_diff, color = site)) +
+  geom_point() +
+  geom_line(aes(group = site))
+
+
+# how does standardized wood pieces change over time?
+data_byyr %>% 
+  ggplot(aes(x=year, y=piece_per_100m, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach))
+
+# how does the difference between standardized number of wood pieces change within a site (between reaches) over time? (diff = LW - noLW)
+data_byyr %>%
+  group_by(site, year) %>% 
+  arrange_all(by_group = "reach") %>% 
+  mutate(piece_100m_diff = lag(piece_per_100m, 1) - piece_per_100m) %>% 
+  dplyr::select(site, year, piece_100m_diff) %>% 
+  drop_na(piece_100m_diff) %>% 
+  ggplot(aes(x=year, y=piece_100m_diff, color = site)) +
   geom_point() +
   geom_line(aes(group = site))
 ```
@@ -131,7 +150,7 @@ data_byyr %>%
   theme(legend.position = "none") 
 
 data_byyr %>% 
-  ggplot(aes(x = year, y = wood_pieces, color = reach)) +
+  ggplot(aes(x = year, y = piece_per_100m, color = reach)) +
   geom_point() +
   geom_line(aes(group = site_reach)) +
   facet_wrap(~site) +
@@ -169,6 +188,23 @@ data_byyr %>%
 
 data_byyr %>% 
   ggplot(aes(x=ratio_accum_to_ch_area, y=sdi, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group=site_reach))
+
+
+## wood piece_per_100m
+data_byyr %>% 
+  ggplot(aes(x=piece_per_100m, y=sinuosity, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group=site_reach))
+
+data_byyr %>% 
+  ggplot(aes(x=piece_per_100m, y=complexity, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group=site_reach))
+
+data_byyr %>% 
+  ggplot(aes(x=piece_per_100m, y=sdi, color = site, shape = reach)) +
   geom_point() +
   geom_line(aes(group=site_reach))
 ```
@@ -502,7 +538,7 @@ ggpairs uses the pearson correlation test by default
 ```{r correlation plot test}
 # ggpairs uses pearson cor test by default 
 data_byyr %>%
-  dplyr::select(sinuosity, complexity, sdi, channel_length, channel_area, accum_area, ratio_accum_to_ch_area, wood_pieces) %>% 
+  dplyr::select(sinuosity, complexity, sdi, channel_length, channel_area, accum_area, ratio_accum_to_ch_area, wood_pieces, piece_per_100m) %>% 
   ggpairs(progress = F)
 
 dynamism_data %>% 
@@ -520,6 +556,9 @@ mod_data_byyr <- data_byyr %>%
   mutate(ratio_accum_scaled = scale(ratio_accum_to_ch_area, 
                                     center = TRUE, # centers ratio values around mean ratio which is then set to 0 
                                     scale = TRUE), # scale changes a value to the # of sd from the mean value
+         piece_100m_scaled = scale(piece_per_100m, 
+                                   center = TRUE, 
+                                   scale = TRUE),
          year_c = scale(year, # centers years around a mean (set to 0) value for year, makes for a more interpretable effect
                         center = TRUE, scale = FALSE)) %>% 
   filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
@@ -531,10 +570,95 @@ mod_data_byyr <- data_byyr %>%
 - all of our response variables are not normally distributed so we're using a generalized linear mixed model with a Gamma family and log link unless otherwise stated
 
 ## models for sinuosity
-```{r sinuosity null model}
+```{r specify sinuosity candidate model}
 ## null model: random effect of site only reflects hierarchical design 
 # this will estimate a random intercept of sinuosity for every site (i.e. mean sinuosity per site)
 null_sin <- glmer(sinuosity ~ (1|site), mod_data_byyr, family = Gamma(link = "log"))
+
+## models with scaled ratio of wood accumulation
+m1_sin <- glmer(sinuosity ~ ratio_accum_scaled + (1|site), mod_data_byyr, family = Gamma(link = "log"))
+m2_sin <- glmer(sinuosity ~ piece_100m_scaled + (1|site), mod_data_byyr, family = Gamma(link = "log"))
+
+m3_sin <- glmer(sinuosity ~ ratio_accum_scaled + piece_100m_scaled + (1|site), mod_data_byyr, family = Gamma(link = "log"))
+m4_sin <- glmer(sinuosity ~ ratio_accum_scaled * piece_100m_scaled + (1|site), mod_data_byyr, family = Gamma(link = "log"))
+
+## models with more complicated random effects structure
+# these calculate both a random intercept and a random slope within a site
+m5_sin <- glmer(sinuosity ~ ratio_accum_scaled + (1 + ratio_accum_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
+m6_sin <- glmer(sinuosity ~ piece_100m_scaled + (1 + piece_100m_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
+
+m7_sin <- glmer(sinuosity ~ ratio_accum_scaled + piece_100m_scaled + (1 + ratio_accum_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
+m8_sin <- glmer(sinuosity ~ ratio_accum_scaled * piece_100m_scaled + (1 + ratio_accum_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
+m9_sin <- glmer(sinuosity ~ ratio_accum_scaled + piece_100m_scaled + (1 + piece_100m_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
+m10_sin <- glmer(sinuosity ~ ratio_accum_scaled * piece_100m_scaled + (1 + piece_100m_scaled|site), mod_data_byyr, family = Gamma(link = "log"))
+
+# full candidate set of models
+cand.set <- list(null_sin, m1_sin, m2_sin, m3_sin, m4_sin, m5_sin, m6_sin, m7_sin, m8_sin, m9_sin, m10_sin)
+
+```
+
+```{r check candidate sinuosity models}
+## model diagnostics with DHARMa & performance packages
+# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
+sim_resids <- purrr::map(cand.set, ~DHARMa::simulateResiduals(fittedModel = .x))
+
+# plotting QQ plot and predicted vs residuals
+purrr::map(sim_resids, ~plot(.x, quantreg = FALSE))
+
+# plotting just residuals
+purrr::map(sim_resids, ~plot(residuals(.x)))
+
+# recalc residuals aggregated by site
+recal_sim_resids <- purrr::map(sim_resids, ~DHARMa::recalculateResiduals(.x, group = ~site))
+
+purrr::map(recal_sim_resids, ~plot(.x, quantreg = FALSE))
+purrr::map(recal_sim_resids, ~plot(residuals(.x)))
+
+# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
+purrr::map(cand.set, ~performance::check_model(.x))
+```
+
+```{r sinuosity model selection}
+AICcmodavg::aictab(cand.set, modnames = c("null_sim","m1_sin","m2_sin","m3_sin", "m4_sin", "m5_sin", 
+                                         "m6_sin", "m7_sin","m8_sin","m9_sin", "m10_sin"))
+
+tab_model(m7_sin)
+tab_model(m1_sin)
+```
+
+```{r plot top sinuosity model predictions}
+# ## plot the null model
+# # create plotting df with our sampled and estimated site means
+# plot_null_sin <- mod_data_byyr %>% 
+#   group_by(site) %>% 
+#   summarize(sampled = mean(sinuosity)) %>% 
+#   mutate(estimated = exp(coef(null_sin)$site$"(Intercept)"))
+# 
+# # solid lines are sampled means, dashed lines are estimated means
+# ggplot(mod_data_byyr) +
+#   geom_point(aes(x = ratio_accum_scaled, y = sinuosity, color = site)) +
+#   geom_hline(aes(yintercept = sampled, color = site), plot_null_sin) +
+#   geom_hline(aes(yintercept = estimated, color = site), plot_null_sin, linetype = "dashed") 
+
+# plot model predictions example
+plot(ggpredict(m7_sin, terms = c("ratio_accum_scaled", "piece_100m_scaled", "site"), type = "random", bias_correction = TRUE))
+plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
+```
+
+
+## models for complexity
+```{r complexity null model}
+mod_data_byyr %>% 
+  ggplot(aes(x=complexity)) +
+  geom_density()
+
+mod_data_byyr %>% 
+  ggplot(aes(x=sdi)) +
+  geom_density()
+
+## null model: random effect of site only reflects hierarchical design 
+# this will estimate a random intercept of sinuosity for every site (i.e. mean sinuosity per site)
+null_sin <- glmer(complexity ~ (1|site), mod_data_byyr, family = Gamma(link = "log"))
 
 ## model diagnostics with DHARMa & performance packages
 # Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
@@ -562,87 +686,7 @@ ggplot(mod_data_byyr) +
   geom_hline(aes(yintercept = estimated, color = site), plot_null_sin, linetype = "dashed") 
 ```
 
-```{r sinuosity alt model 1}
-# simplest model that reflects the hierarchical design of the study
-# ratio is continuous and scaled, site  accounts for repeated observations 
-m1_sin <- glmer(sinuosity ~ ratio_accum_scaled + (1|site), mod_data_byyr, family = Gamma(link = "log"))
 
-## model diagnostics with DHARMa & performance packages
-# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
-plot(DHARMa::simulateResiduals(m1_sin))
-# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
-performance::check_model(m1_sin)
-
-## model summary
-summary(m1_sin)
-coef(m1_sin)
-r2(m1_sin)
-AICc(m1_sin)
-
-## plot the null model
-# create plotting df with our sampled and estimated site means
-plot_m1_sin <- rownames_to_column(coef(m1_sin)$site, var = "site") %>% 
-  rename(intercept = "(Intercept)") %>% 
-  mutate(intercept = exp(intercept),
-         ratio_accum_scaled = exp(ratio_accum_scaled))
-
-# solid lines are sampled means, dashed lines are estimated means
-ggplot(mod_data_byyr) +
-  geom_point(aes(x = ratio_accum_scaled, y = sinuosity, color = site)) +
-  geom_abline(aes(slope = ratio_accum_scaled, intercept = intercept, color = site), plot_m1_sin) +
-  geom_smooth(aes(x = ratio_accum_scaled, y=sinuosity, color = site), 
-              formula = y ~ exp(x), method = "glm", method.args = list(family = "Gamma"))
-
-plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
-
-plot(ggpredict(m1_sin, terms = c("ratio_accum_scaled", "site"), type = "random"))
-
-plot_model(m1_sin, type = "re")
-plot_model(m1_sin, type = "pred")
-plot_model(m1_sin, type = "est")
-plot_residuals(m1_sin)
-
-```
-
-```{r sinuosity alt model 2}
-# reach is a random effect nested within the random effect of site
-m2_sin <- glmer(sinuosity ~ ratio_accum_scaled + year_c + (1|site), mod_data_byyr, family = Gamma(link = "log"))
-
-# model diagnostics with DHARMa & performance packages
-# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
-plot(DHARMa::simulateResiduals(m2_sin))
-# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
-performance::check_model(m2_sin)
-
-## model summary
-summary(m2_sin)
-coef(m2_sin)
-r2(m2_sin)
-AICc(m2_sin)
-
-plot(ggpredict(m2_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
-```
-```{r sinuosity alt model 3}
-# reach is a random effect nested within the random effect of site
-m3_sin <- glmer(sinuosity ~ ratio_accum_scaled * year_c + (1|site), mod_data_byyr, family = Gamma(link = "log"))
-
-# model diagnostics with DHARMa & performance packages
-# Plot simulated residuals: (QQ-plot for distribution, Residual vs. Predicted for variance)
-plot(DHARMa::simulateResiduals(m3_sin))
-# plots various model assumptions (normality of residuals, normality of random effects, linear relationship, homogeneity of variance, multicollinearity).
-performance::check_model(m3_sin)
-
-## model summary
-summary(m3_sin)
-coef(m3_sin)
-r2(m3_sin)
-AICc(m3_sin)
-
-plot(ggpredict(m3_sin, terms = c("ratio_accum_scaled", "site"), type = "random", bias_correction = TRUE))
-
-cand.set <- list(null_sin, m1_sin, m2_sin, m3_sin)
-aictab(list(null_sin, m1_sin, m2_sin, m3_sin), modnames = c("null_sim","m1_sin","m2_sin","m3_sin"))
-```
 
 ## stage 3: sensitivity
 
