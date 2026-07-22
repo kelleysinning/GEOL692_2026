@@ -847,3 +847,5 @@ AICcmodavg::aictab(models$sdi)
 
 it could be good to ask whether our results change with the period of record we use (i.e. the imagery quality)
 especially if we think the quality of wood data drastically improves in a given period
+
+shayla can make a plot for this 
