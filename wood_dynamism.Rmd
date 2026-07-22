@@ -26,6 +26,7 @@ library(see)
 library(AICcmodavg)
 library(ggeffects)
 library(sjPlot)
+library(emmeans)
 ```
 
 ```{r kelley load data, message = FALSE}
@@ -694,20 +695,30 @@ fit_candidates <- function(response, data) {
 }
 
 models <- map(set_names(responses), fit_candidates, data = mod_data_byyr)
-
 ```
 
 ## model selection using AICc
 - model selection: AICc is preferred for small sample sizes which is when the number of data points / number of parameters < 40 (n/k < 40). we have 126 observations, which for the null model means we're not in the small sample size world (k=3), but for all other models we are because we have to estimate at least 4 parameters. it's good to use the same criteria across models so we'll use AICc for all. the aictab function in the AICcmodavg does this for us.
 ```{r model selection}
+# m1 is the top model for sinuosity
 AICcmodavg::aictab(models$sinuosity)
+# m2 is the top model for complexity 
 AICcmodavg::aictab(models$complexity)
-#AICcmodavg::aictab(models$sdi)
 
-tab_model(models$sinuosity$m1) ## this is on the logit scale
-tab_model(models$complexity$m2) ## this is on the log scale
-tab_model(models$complexity$m1)
+# look at the top model summaries
+## these estimates are on the log scale
+summary(models$sinuosity$m1)
+summary(models$complexity$m2)
+
+## these are both on the log scale
+#tab_model(models$sinuosity$m1) 
+#tab_model(models$complexity$m2) 
 ```
+## obtain estimates on original response scale
+```{r model estimates}
+emmeans(model, ~ Treatment, type = "response")
+```
+
 
 ## plot model predictions
 ```{r plot sinuosity model predictions}
