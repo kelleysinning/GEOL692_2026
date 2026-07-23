@@ -145,13 +145,18 @@ data_byyr %>%
 ```
 ```{r simple wood site plots}
 ##### wood values by site by year #####
-data_byyr %>% 
+data_byyr %>% # Cleaned up this plot a bit
   ggplot(aes(x = year, y = ratio_accum_to_ch_area, color = reach)) +
-  geom_point() +
+  geom_point(size = 2) +
   geom_line(aes(group = site_reach)) +
   facet_wrap(~site) +
-  scale_color_manual(values = wood_colors) +
-  theme(legend.position = "none") 
+  scale_color_manual(values = wood_colors,
+          name = "Reach Type",
+          labels = c("Large Wood", "Control")) +
+  labs(y = "Wood accumulation : Channel area ratio") + 
+  theme(legend.position = "right",
+        panel.grid = element_blank())+
+    theme_bw() 
 
 data_byyr %>% 
   ggplot(aes(x = year, y = piece_per_100m, color = reach)) +
@@ -279,21 +284,42 @@ data_byyr %>%
 
 dynamism values by site
 ```{r simple dynamism plots}
+
+library(rcartocolor)
+rcartocolor::display_carto_all()
+
 ##### Sinuosity vs both mean wood metrics #####
 p1 <- dynamism_data %>%
   ggplot(aes(x = avg_wood_pieces_per100m, y = sinuosity_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() + 
   theme(legend.position = "none") +
-  labs(x = "Avg. Wood Pieces per 100m", y = "Sinuosity Dynamism")
+  labs(x = "Avg. Wood Pieces per 100m", 
+       y = "Sinuosity Dynamism",
+       color = "Site",
+       shape = "Reach Type")
 
 p2 <- dynamism_data %>%
   ggplot(aes(x = mean_wood_accum_per_area, y = sinuosity_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() +
-  labs(x = "Avg. Wood Acculumations per Area", y = "")
+  theme(legend.position = "right") +
+  labs(x = "Avg. Wood Acculumations per Area", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
 
 (p1 + p2) +
   plot_annotation(title = "Sinuosity Dynamism vs. Avg Wood Metrics")
@@ -302,7 +328,7 @@ p2 <- dynamism_data %>%
 ##### Complexity vs both mean wood metrics #####
 p1 <- dynamism_data %>%
   ggplot(aes(x = avg_wood_pieces_per100m, y = complexity_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach), size = 3) +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() + 
   theme(legend.position = "none") +
@@ -310,7 +336,7 @@ p1 <- dynamism_data %>%
 
 p2 <- dynamism_data %>%
   ggplot(aes(x = mean_wood_accum_per_area, y = complexity_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach),size = 3) +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() +
   labs(x = "Avg. Wood Acculumations per Area", y = "")
@@ -322,7 +348,7 @@ p2 <- dynamism_data %>%
 ##### SDI vs both mean wood metrics #####
 p1 <- dynamism_data %>%
   ggplot(aes(x = avg_wood_pieces_per100m, y = sdi_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach), size = 3) +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() + 
   theme(legend.position = "none") +
@@ -330,7 +356,7 @@ p1 <- dynamism_data %>%
 
 p2 <- dynamism_data %>%
   ggplot(aes(x = mean_wood_accum_per_area, y = sdi_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach), size = 3) +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() +
   labs(x = "Avg. Wood Acculumations per Area", y = "")
@@ -342,7 +368,7 @@ p2 <- dynamism_data %>%
 ##### Net change vs both mean wood metrics #####
 p1 <- dynamism_data %>%
   ggplot(aes(x = avg_wood_pieces_per100m, y = net_change_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach), size = 3) +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() + 
   theme(legend.position = "none") +
@@ -350,7 +376,7 @@ p1 <- dynamism_data %>%
 
 p2 <- dynamism_data %>%
   ggplot(aes(x = mean_wood_accum_per_area, y = net_change_dynamism, color = site)) +
-  geom_point(aes(shape = reach)) +
+  geom_point(aes(shape = reach), size = 3) +
   geom_line(aes(group = site), color = "black", alpha = 0.5) +
   theme_bw() +
   labs(x = "Avg. Wood Acculumations per Area", y = "")
@@ -358,6 +384,165 @@ p2 <- dynamism_data %>%
 (p1 + p2) +
   plot_annotation(title = "Net Change Dynamism vs. Avg Wood Metrics")
 ##### end
+```
+```{r simple dynamism plots PART 2 MEGA PANEL}
+##### Sinuosity vs both mean wood metrics #####
+p1 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = sinuosity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "Sinuosity",
+       color = "Site",
+       shape = "Reach Type")
+
+p2 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = sinuosity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+sinuosity <- (p1 + p2) +
+  plot_annotation(title = "Sinuosity Dynamism vs. Avg Wood Metrics")
+##### end 
+
+##### Complexity vs both mean wood metrics #####
+p3 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = complexity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "Complexity",
+       color = "Site",
+       shape = "Reach Type")
+
+p4 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = complexity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "right") +
+  labs(x = "", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+complexity <- (p3 + p4) +
+  plot_annotation(title = "Complexity Dynamism vs. Avg Wood Metrics")
+##### end
+
+##### SDI vs both mean wood metrics #####
+p5 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = sdi_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "SDI",
+       color = "Site",
+       shape = "Reach Type")
+
+p6 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = sdi_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+sdi <- (p5 + p6) +
+  plot_annotation(title = "SDI Dynamism vs. Avg Wood Metrics")
+##### end
+
+##### Net change vs both mean wood metrics #####
+p7 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = net_change_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Pieces per 100m", 
+       y = "Net Change",
+       color = "Site",
+       shape = "Reach Type")
+
+p8 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = net_change_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Acculumations per Area", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+netdyno <- (p7 + p8) +
+  plot_annotation(title = "Net Change vs. Avg Wood Metrics")
+
+
+# Patching together
+(p1 + p2 +
+ p3 + p4 +
+ p5 + p6 +
+ p7 + p8) +
+  plot_layout(ncol = 2) +
+  plot_annotation(title = "Dynamism vs. Avg Wood Metrics")
+##### end
+
 ```
 
 ```{r simple dynamism plots pt. 2}
