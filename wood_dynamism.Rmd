@@ -899,9 +899,11 @@ summary(models$complexity$m2)
 #tab_model(models$sinuosity$m1) 
 #tab_model(models$complexity$m2) 
 ```
+
 ## obtain estimates on original response scale
-```{r model estimates}
-emmeans(model, ~ Treatment, type = "response")
+```{r top model estimates}
+emmeans(models$sinuosity$m1, ~ ratio_accum_scaled, type = "response")
+
 ```
 
 
