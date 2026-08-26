@@ -23,7 +23,8 @@ source("setup.R")
 ```{r everyone load data, message = FALSE}
 # this chunk should just work for everyone when you open the project. I copied the data into a subfolder called data within this project, but in case it doesn't work I left Noel and Kelley's load chunks below
 
-dynamism_data <- read_csv("data/site_metrics_07022026.csv")
+dynamism_data <- read_csv("data/site_metrics_07022026.csv") %>%
+  
 data_byyr <- read_csv("data/SelectMetricsByYear_07022026.csv") 
 all_data_byyr <- read.csv("data/ALL_metrics_07022026.csv") 
 ```
@@ -76,7 +77,7 @@ all_data_byyr <- all_data_byyr %>%
  
 plot settings
 ```{r plot settings}
-wood_colors = c("LW_Channel" = "#99C5B5", "no_LW_Channel" = "#BEA57D")
+wood_colors = c("LW_Channel" = "#BEA57D", "no_LW_Channel" = "#99C5B5")#BEA57D
 ```
 
 # visualizing distribution of values 
@@ -143,6 +144,7 @@ data_byyr %>%
   geom_point() +
   geom_line(aes(group = site))
 ```
+
 ```{r simple wood site plots}
 ##### wood values by site by year #####
 data_byyr %>% # Cleaned up this plot a bit

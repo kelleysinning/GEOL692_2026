@@ -1,0 +1,161 @@
+---
+title: "figures"
+output: html_document
+---
+# Setup
+
+```{r everyone load data, message = FALSE}
+# this chunk should just work for everyone when you open the project. I copied the data into a subfolder called data within this project, but in case it doesn't work I left Noel and Kelley's load chunks below
+
+dynamism_data <- read_csv("data/figures_data/dynamism_data.csv")
+data_byyr <- read_csv("data/figures_data/data_byyr.csv") 
+
+all_data_byyr <- read.csv("data/ALL_metrics_07022026.csv") 
+```
+
+```{r clean loaded data}
+## this should work after you run the right version of data loading above
+
+# dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
+#   bind_rows( # also want to add back the mod rock_WA site
+#     dynamism_data %>% 
+#       slice(6) %>% 
+#       mutate(across(
+#         c(site_reach, site),
+#         ~ str_replace_all(.x, "_1", "_2")
+#         ))
+#     ) 
+
+data_byyr <- data_byyr %>% 
+  rename(reach = site,
+         site = river) %>% 
+  mutate(site_reach = paste0(site,reach,ab)) %>% 
+  mutate(ratio_accum_to_ch_area = accum_area/channel_area,
+         piece_per_100m = (wood_pieces/channel_length)*100,
+         site = factor(site),
+         reach = factor(reach))
+
+all_data_byyr <- all_data_byyr %>% 
+  rename(reach = site,
+         site = river) %>% 
+  mutate(site_reach = paste0(site,reach))
+```
+
+```{r plot settings}
+wood_colors = c("LW_Channel" = "#BEA57D", "no_LW_Channel" = "#99C5B5")#BEA57D
+```
+
+
+```{r}
+
+##### mean wood values by site #####
+dynamism_data %>% 
+  group_by(ab) %>%
+  ggplot(aes(x = name, y = avg_wood_pieces_per100m, fill = reach)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  scale_fill_manual(values = wood_colors,
+                    name = "Reach Type",
+                    labels = c("Wood rich", "Wood poor")) +
+  scale_x_discrete(guide = guide_axis(angle = 25)) +
+  theme_bw()  +
+  labs(x = "Site",
+       y = "Mean (# pieces/100 m)") +
+  geom_text(aes(label = ab),
+            position = position_dodge2(width = 0.9),
+            vjust = -0.9) +
+  theme(legend.position = "none")
+
+# Wood accumulation area normalized by channel area at each time step, averaged for each site
+
+dynamism_data %>% 
+  group_by(ab) %>%
+  ggplot(aes(x = name, y = mean_wood_accum_per_area, fill = reach)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  scale_fill_manual(values = wood_colors,
+                    name = "Reach Type",
+                    labels = c("Wood rich", "Wood poor")) +
+  theme(legend.position = "none") +
+  scale_x_discrete(guide = guide_axis(angle = 25)) +
+  theme_bw()  +
+  labs(x = "Site",
+       y = "Mean (wood accumulation area/channel area)") +
+  geom_text(aes(label = ab),
+            position = position_dodge2(width = 0.9),
+            vjust = -0.9)
+
+```
+
+
+### BOOKMARK 
+#Acc over time facet wrap
+
+```{r}
+
+# Need to get A and B labels on here. UGH!
+
+data_byyr %>% # Cleaned up this plot a bit
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = ratio_accum_to_ch_area, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name) +
+  scale_color_manual(values = wood_colors,
+          name = "Reach Type",
+          labels = c("Large Wood", "Control")) +
+  labs(y = "Wood accumulation : Channel area ratio") + 
+  theme(legend.position = "right",
+        panel.grid = element_blank())+
+    theme_bw() +
+  geom_text(aes(label = ab),
+            vjust = 0.8)
+```
+
+
+##Supplemental
+
+### Acc & Pieces over time
+```{r}
+
+# sAME ISSUE HERE 
+
+
+# how does standardized wood (the ratio of wood accumulation to channel area) change over time?
+accum_time <- data_byyr %>%
+  ggplot(aes(x=year, y=ratio_accum_to_ch_area, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  theme_bw() +
+  labs(x = "Year",
+       y = "Wood accumulation area/channel area")
+
+ggsave(accum_time,
+       filename = "output/accum_time.jpg",
+       dpi = 300,
+       width = 4,
+       height = 3,
+       units = "in")
+```
+
+
+```{r}
+# sAME ISSUE HERE
+
+# how does standardized wood pieces change over time?
+pieces_time <- data_byyr %>% 
+  ggplot(aes(x=year, y=piece_per_100m, color = site, shape = reach)) +
+  geom_point() +
+  geom_line(aes(group = site_reach)) +
+  theme_bw() +
+  labs(x = "Year",
+       y = "# of pieces/100 m")
+
+# General trend of increasing over time, this is likely an artifact of the imagery resolution improving. Definitely include this in the SI. This is not true for accumulations.
+
+ggsave(pieces_time,
+       filename = "output/pieces_time.jpg",
+       dpi = 300,
+       width = 4,
+       height = 3,
+       units = "in")
+```
+
