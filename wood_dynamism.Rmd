@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       out.width = "100%")
 ```
 
-<<<<<<< HEAD
+
 ```{r load libraries, message = FALSE}
 # Adding a packageLoad function within the script "setup.R" because I didn't have all of these downloaded
 # Add additional packages within the script, or just use the library function. Sorry to make this complicated
