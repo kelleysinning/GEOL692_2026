@@ -37,15 +37,6 @@ data_byyr <- read_csv("SelectMetricsByYear_07022026.csv") # Kelley's path
 all_data_byyr <- read.csv("ALL_metrics_07022026.csv") # Kelley's path
 ```
 
-```{r noel load data, message = FALSE}
-## change directory if needed ##
-data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
-
-dynamism_data <- read_csv(file.path(data_dir, "Metrics/site_metrics_07022026.csv"))
-data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026.csv"))
-all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
-```
-
 
 ```{r clean loaded data}
 ## this should work after you run the right version of data loading above
