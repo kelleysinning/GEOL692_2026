@@ -289,7 +289,7 @@ ggsave(metric_grid,
 ```
 
 
-# Mega dynamism panel
+# Mega ch metrics panel
 
 ```{r simple dynamism plots PART 2 MEGA PANEL}
 ##### Sinuosity vs both mean wood metrics #####
@@ -614,6 +614,56 @@ ggsave(z_score_plot,
        units = "in",
        dpi = 300)
 
+```
+
+### Loose dynamism for results text - 
+##Paired dynamism Boxplot
+
+```{r}
+sin_dyn_boxplot <- dynamism_data %>%
+mutate(reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor")) %>%
+  ggplot(aes(x = reach, y = sinuosity_dynamism)) +
+  geom_boxplot() +
+  geom_point()+
+  geom_line(aes(group = name, color = name)) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+complex_dyn_boxplot <- dynamism_data %>%
+mutate(reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor")) %>%
+  ggplot(aes(x = reach, y = complexity_dynamism)) +
+  geom_boxplot() +
+  geom_point()+
+  geom_line(aes(group = name, color = name)) +
+  theme_bw()
+complex_dyn_boxplot
+
+net_dyn_boxplot <- dynamism_data %>%
+mutate(reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor")) %>%
+  ggplot(aes(x = reach, y = net_change_dynamism)) +
+  geom_boxplot() +
+  geom_point()+
+  geom_line(aes(group = name, color = name)) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+paired_dyn_boxplot <- (sin_dyn_boxplot / complex_dyn_boxplot / net_dyn_boxplot)
+
+ggsave(paired_dyn_boxplot,
+       filename = "output/paired_dyn_boxplot.jpg",
+       height = 7,
+       width = 8,
+       units = "in",
+       dpi = 300)
 ```
 
 
