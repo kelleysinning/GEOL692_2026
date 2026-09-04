@@ -136,6 +136,32 @@ ggsave(acc_over_time,
        dpi = 300)
 ```
 
+### Wood summary stats
+```{r}
+
+# Accum area summary stats
+
+data_byyr %>%
+  group_by(reach) %>%
+  summarize(mean = mean(accum_area),
+            min = min(accum_area),
+            min_name = name[which.min(accum_area)],
+            min_year = year[which.min(accum_area)],
+            max = max(accum_area),
+            max_name = name[which.max(accum_area)],
+            max_year = year[which.max(accum_area)]
+            )
+
+# Wood means by reach
+
+data_byyr %>%
+  group_by(name, reach, ab) %>%
+  summarize(mean_pieces = mean(wood_pieces),
+            mean_accum = mean(accum_area)
+            )
+```
+
+
 ## Ch metrics x time facet wrap
 
 ```{r}
@@ -240,7 +266,8 @@ ch_area_over_time <- data_byyr %>%
     color = "black") +
   theme(legend.position = "none",
         strip.background = element_blank(),
-        strip.text = element_blank())
+        strip.text = element_blank(),
+        )
 
 # ggsave(ch_area_over_time,
 #        filename = "output/ch_area_over_time_facet.jpg",
