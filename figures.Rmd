@@ -98,10 +98,12 @@ ggsave(mean_wood_by_site,
 
 ```
 
-# Wood x time facet wrap
+# Metrics X time
+
+## Wood x time facet wrap
 
 ```{r}
-acc_over_time <- data_byyr %>% # Cleaned up this plot a bit
+acc_over_time <- data_byyr %>%
   group_by(ab) %>%
   ggplot(aes(x = year, y = ratio_accum_to_ch_area, color = reach)) +
   geom_point(size = 2) +
@@ -109,16 +111,22 @@ acc_over_time <- data_byyr %>% # Cleaned up this plot a bit
   facet_wrap(~name) +
   scale_color_manual(values = wood_colors,
           name = "Reach Type",
-          labels = c("Large Wood", "Control")) +
-  labs(y = "Wood accumulation : Channel area") + 
-  theme(legend.position = "right") +
+          labels = c("Wood rich", "Wood poor")) +
+  labs(x = "Year",
+       y = "Wood accumulation area (m)/Channel area (m)") + 
+
     theme_bw() +
   geom_text(
-    data = data_byyr %>% slice_min(order_by = year, n = 1, by = ab), # first point
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
     aes(label = ab),
     hjust = 0,        
     nudge_x = -2,     
-    show.legend = FALSE)
+    show.legend = FALSE,
+    color = "black") +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.1,0.9),
+        legend.background = element_rect(color = "black", linewidth = 0.25))
 
 ggsave(acc_over_time,
        filename = "output/acc_over_time_facet.jpg",
@@ -127,6 +135,161 @@ ggsave(acc_over_time,
        units = "in",
        dpi = 300)
 ```
+
+### Wood summary stats
+```{r}
+
+# Accum area summary stats
+
+data_byyr %>%
+  group_by(reach) %>%
+  summarize(mean = mean(accum_area),
+            min = min(accum_area),
+            min_name = name[which.min(accum_area)],
+            min_year = year[which.min(accum_area)],
+            max = max(accum_area),
+            max_name = name[which.max(accum_area)],
+            max_year = year[which.max(accum_area)]
+            )
+
+# Wood means by reach
+
+data_byyr %>%
+  group_by(name, reach, ab) %>%
+  summarize(mean_pieces = mean(wood_pieces),
+            mean_accum = mean(accum_area)
+            )
+```
+
+
+## Ch metrics x time facet wrap
+
+```{r}
+# Complexity
+complexity_over_time <- data_byyr %>%
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = complexity, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name,
+             nrow = 1) + # Remove if want one plot per metric
+  scale_color_manual(values = wood_colors,
+          name = "Reach type",
+          labels = c("Wood rich", "Wood poor")) +
+  labs(y = "Complexity (m/m)") + 
+    theme_bw() +
+  geom_text(
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -2,     
+    show.legend = FALSE,
+    color = "black")  +
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "inside",
+        legend.position.inside = c(0.06,0.25),
+        legend.background = element_rect(color = "black", linewidth = 0.25))
+
+complexity_over_time
+
+# ggsave(complexity_over_time,
+#        filename = "output/complexity_over_time_facet.jpg",
+#        height = 6,
+#        width = 7.5,
+#        units = "in",
+#        dpi = 300)
+
+# Sin x time facet wrap
+sinuosity_over_time <- data_byyr %>%
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = sinuosity, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name,
+             nrow = 1) +# Remove if want one plot per metric
+  scale_color_manual(values = wood_colors,
+          name = "Reach type",
+          labels = c("Wood rich", "Wood poor")) +
+  labs(y = "Sinuosity") + 
+    theme_bw() +
+  geom_text(
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -2,     
+    show.legend = FALSE,
+    color = "black") +
+    theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        legend.position = "none")
+
+# ggsave(sinuosity_over_time,
+#        filename = "output/sinuosity_over_time_facet.jpg",
+#        height = 6,
+#        width = 7.5,
+#        units = "in",
+#        dpi = 300)
+
+
+# Channel area
+
+# Need some way to show net change over time... because its a year-to year thing..
+# Could show channel area normalized by channel length each year?
+
+ch_area_over_time <- data_byyr %>%
+  mutate(ch_area_norm = channel_area/channel_length) %>%
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = channel_area, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name,
+             nrow = 1) + # Remove if want one plot per metric
+  scale_color_manual(values = wood_colors,
+          name = "Reach type",
+          labels = c("Wood rich", "Wood poor")) +
+  labs(x = "Year",
+       y = expression(paste("Channel area (", m^{2}, ")"))) + 
+  theme(legend.position = "right") +
+    theme_bw() +
+  geom_text(
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -2,     
+    show.legend = FALSE,
+    color = "black") +
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        )
+
+# ggsave(ch_area_over_time,
+#        filename = "output/ch_area_over_time_facet.jpg",
+#        height = 6,
+#        width = 7.5,
+#        units = "in",
+#        dpi = 300)
+
+## Facet wrap grid
+
+metric_grid <- (complexity_over_time / sinuosity_over_time / ch_area_over_time)
+
+ggsave(metric_grid,
+       filename = "output/metric_grid.jpg",
+       height = 7,
+       width = 12,
+       units = "in",
+       dpi = 300)
+```
+
+
+# Mega dynamism panel
 
 ```{r simple dynamism plots PART 2 MEGA PANEL}
 ##### Sinuosity vs both mean wood metrics #####
@@ -285,6 +448,171 @@ netdyno <- (p7 + p8) +
   plot_layout(ncol = 2) +
   plot_annotation(title = "Dynamism vs. Avg Wood Metrics")
 ##### end
+
+```
+
+#Mega z-score panel
+
+```{r simple dynamism plots pt. 2}
+library(grid)
+library(rcartocolor)
+library(dplyr)
+library(patchwork)
+
+## CLEANING UP
+# Adjusting so all 3 metrics can be plotted on same graph
+
+dynamism_cubed <- dynamism_data %>%
+  pivot_longer(c(complexity_dynamism,sinuosity_dynamism, net_change_dynamism),
+               names_to = "Metric",
+               values_to = "Value") %>%
+  group_by(Metric) %>%
+  mutate(Value_scaled = (scale(Value))) # calculated a separate z-score for each dynamism metric
+  # will show dynamism values relative to each other
+
+# Essentially, does wood accumulation change dynamism relative to it's normal range?
+
+# Looking at colorblind friendly color schemes
+#rcartocolor::display_carto_all()
+#carto_pal(7, "Earth")
+
+# Renaming labels
+dynamism_cubed <- dynamism_cubed %>%
+  mutate(
+    Metric = recode(
+      Metric,
+      complexity_dynamism = "Complexity",
+      sinuosity_dynamism = "Sinuosity",
+      net_change_dynamism = "Net Channel Change"
+    ),
+    reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor"
+    ))
+    
+
+## PLOTS
+
+## COMBO PLOT
+# Mean wood pieces across site and reach
+z_pieces <- dynamism_cubed %>% ggplot(aes(
+    x = avg_wood_pieces_per100m,
+    y = Value_scaled,
+    color = Metric
+    )) +
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = name),
+    size = 4)+
+  scale_shape_manual(values = c(3,4,18,16,17,15)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  geom_text(
+    data = dynamism_cubed,
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -0.005,     
+    show.legend = FALSE,
+    color = "black",
+    size = 3,
+    fontface = "bold") +
+  facet_wrap(~reach) +
+    facet_wrap(~reach, scales = "free_x") + # delete scale = "free_x" if you want each reach on the same scale
+    labs(
+    x = "Mean wood pieces (per 100m)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  xlim(0, NA) +
+  theme_bw()
+
+# Mean wood accumulation across site and reach
+z_acc <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = mean_wood_accum_per_area,
+    y = Value_scaled,
+    color = Metric
+  )
+) +
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = name),
+    size = 4)+
+  scale_shape_manual(values = c(3,4,18,16,17,15)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  geom_text(
+    aes(label = ab),
+    hjust = 0,
+    nudge_x = -0.005,
+    show.legend = FALSE,
+    color = "black",
+    size = 3,
+    fontface = "bold") +
+    facet_wrap(~reach, scales = "free_x") + # delete scale = "free_x" if you want on the same scale
+    labs(
+    x = "Mean wood accumulation (per area)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  xlim(0, NA) +
+  theme_bw()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+## FINAL PLOT
+z_score_plot <- (z_pieces + z_acc) +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right",
+    legend.title = element_text(face = "bold"),
+    legend.key.size = unit(0.4, "cm"),
+    legend.spacing.x = unit(0.2, "cm"),
+    legend.text = element_text(size = 9),
+    legend.box.spacing = unit(0.1, "cm"),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  ) &
+  guides(
+    color = guide_legend(
+      title = "Dynamism Metric",
+      ncol = 1
+    ),
+    shape = guide_legend(
+      title = "Site",
+      ncol = 1,
+      override.aes = list(size = 3)
+    )
+  )
+
+ggsave(z_score_plot,
+       filename = "output/z_score_plot.jpg",
+       height = 5,
+       width = 9,
+       units = "in",
+       dpi = 300)
 
 ```
 
