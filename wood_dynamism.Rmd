@@ -23,7 +23,7 @@ source("setup.R")
 ```{r everyone load data, message = FALSE}
 # this chunk should just work for everyone when you open the project. I copied the data into a subfolder called data within this project, but in case it doesn't work I left Noel and Kelley's load chunks below
 
-dynamism_data <- read_csv("data/site_metrics_07022026.csv") %>%
+dynamism_data <- read_csv("data/site_metrics_07022026.csv")
   
 data_byyr <- read_csv("data/SelectMetricsByYear_07022026.csv") 
 all_data_byyr <- read.csv("data/ALL_metrics_07022026.csv") 
@@ -35,15 +35,6 @@ setwd("~/Library/CloudStorage/OneDrive-TheUniversityofMontana/Wood+/Wood+") # Ke
 dynamism_data <- read_csv("site_metrics_07022026.csv") # Kelley's path
 data_byyr <- read_csv("SelectMetricsByYear_07022026.csv") # Kelley's path
 all_data_byyr <- read.csv("ALL_metrics_07022026.csv") # Kelley's path
-```
-
-```{r noel load data, message = FALSE}
-## change directory if needed ##
-data_dir <- "C:/Users/nc274936/OneDrive - The University of Montana/wood_dynamism/data"
-
-dynamism_data <- read_csv(file.path(data_dir, "Metrics/site_metrics_07022026.csv"))
-data_byyr <- read_csv(file.path(data_dir, "/Metrics/SelectMetricsByYear_07022026.csv"))
-all_data_byyr <- read.csv(file.path(data_dir, "/Metrics/ALL_metrics_07022026.csv"))
 ```
 
 
@@ -903,10 +894,35 @@ summary(models$complexity$m2)
 ```
 
 ## obtain estimates on original response scale
-still working on this section
 ```{r top model estimates}
-emmeans(models$sinuosity$m1, ~ ratio_accum_scaled, type = "response")
+# for the sinuosity model, the intercept is the global mean sinuosity (across all sites)
+# and the ratio effect is the effect of 1 sd increase in wood accumulation on sinuosity 
+# both of these are on the log scale
+sinuosity.m1.intercept <- summary(models$sinuosity$m1)$coefficients["(Intercept)", "Estimate"]
+sinuosity.m1.ratio.effect <- summary(models$sinuosity$m1)$coefficients["ratio_accum_scaled", "Estimate"]
 
+# estimates on original response scale
+# the gloabl mean sinuosity is 2.545686
+exp(sinuosity.m1.intercept)
+
+# ratio effect is still standardized 
+# i.e. for every 1 sd increase in ratio of wood accum there is a 1.163508 increase in sinuosity
+exp(sinuosity.m1.ratio.effect)
+
+# for the complexity model, the intercept is the global mean complexity (across all sites)
+# and the ratio effect is the effect of 1 sd increase in wood accumulation on complexity 
+# both of these are on the log scale
+complexity.m2.intercept <- summary(models$complexity$m2)$coefficients["(Intercept)", "Estimate"]
+complexity.m2.ratio.effect <- summary(models$complexity$m2)$coefficients["ratio_accum_scaled", "Estimate"]
+
+
+# estimates on original response scale
+# the gloabl mean complexity is 1.8377
+exp(complexity.m2.intercept)
+
+# ratio effect is still standardized 
+# i.e. for every 1 sd increase in ratio of wood accum there is a 0.9920911 increase in complexity 
+exp(complexity.m2.ratio.effect)
 ```
 
 
