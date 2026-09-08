@@ -873,6 +873,8 @@ fit_candidates <- function(response, data) {
 }
 
 models <- map(set_names(responses), fit_candidates, data = mod_data_byyr)
+
+saveRDS(models, file = "./data/figures_data/candidate_models.rds")
 ```
 
 ## model selection using AICc

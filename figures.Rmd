@@ -45,6 +45,13 @@ all_data_byyr <- all_data_byyr %>%
 
 ```{r plot settings}
 wood_colors = c("LW_Channel" = "#BEA57D", "no_LW_Channel" = "#99C5B5")#BEA57D
+
+# these site colors are based on the rcartocolor::cartocolor %>% filter(Name=="Earth") color list for n6 
+# to match Kelley's color scheme from the z-scaled dynamism plots
+name_colors = c("Indian Creek" = "#A16928", "Lower Middle Fork Snoqualmie" = "#c29b64", 
+                "Nyack Creek" = "#e0cfa2", "Rock Creek" = "#cbd5bc", 
+                "Skunk Creek" = "#85adaf", "Upper Middle Fork Snoqualmie" ="#2887a1")
+
 ```
 
 # Mean wood bar plot
@@ -665,6 +672,125 @@ ggsave(paired_dyn_boxplot,
        units = "in",
        dpi = 300)
 ```
+## model results figures
+
+candidate models were specified in wood_dynamism.Rmd and saved to the candidate_models.rds file in figures_data/ 
+```{r load candidate models}
+models <- readRDS("./data/figures_data/candidate_models.rds")
+```
+
+AICc table info
+```{r model selection}
+# m1 is the top model for sinuosity
+AICcmodavg::aictab(models$sinuosity)
+# m2 is the top model for complexity 
+AICcmodavg::aictab(models$complexity)
+```
+model summary info for each top model
+```{r top model summary for each resposne}
+# look at the top model summaries
+## these estimates are on the log scale
+summary(models$sinuosity$m1)
+summary(models$complexity$m2)
+```
+
+## obtain estimates on original response scale
+```{r top model estimates}
+# for the sinuosity model, the intercept is the global mean sinuosity (across all sites)
+# and the ratio effect is the effect of 1 sd increase in wood accumulation on sinuosity 
+# both of these are on the log scale
+sinuosity.m1.intercept <- summary(models$sinuosity$m1)$coefficients["(Intercept)", "Estimate"]
+sinuosity.m1.ratio.effect <- summary(models$sinuosity$m1)$coefficients["ratio_accum_scaled", "Estimate"]
+
+# estimates on original response scale
+# the gloabl mean sinuosity is 2.545686
+exp(sinuosity.m1.intercept)
+
+# ratio effect is still standardized 
+# i.e. for every 1 sd increase in ratio of wood accum there is a 1.163508 increase in sinuosity
+exp(sinuosity.m1.ratio.effect)
+
+# for the complexity model, the intercept is the global mean complexity (across all sites)
+# and the ratio effect is the effect of 1 sd increase in wood accumulation on complexity 
+# both of these are on the log scale
+complexity.m2.intercept <- summary(models$complexity$m2)$coefficients["(Intercept)", "Estimate"]
+complexity.m2.ratio.effect <- summary(models$complexity$m2)$coefficients["ratio_accum_scaled", "Estimate"]
+
+
+# estimates on original response scale
+# the gloabl mean complexity is 1.8377
+exp(complexity.m2.intercept)
+
+# ratio effect is still standardized 
+# i.e. for every 1 sd increase in ratio of wood accum there is a 0.9920911 increase in complexity 
+exp(complexity.m2.ratio.effect)
+```
+generate predictions based on model
+code copied from wild591 class, need to update 
+
+```{r}
+res <- 100
+plot(m1$sims.list$beta0, type = 'l')
+niter <- length(m1$sims.list$beta0)
+py <- matrix(NA, niter, res)
+pr <- matrix(NA, niter, res)
+
+# assess range of covariate values, and assign axis marks.
+summary(x)
+plotx <- 3:9
+plotz <- (plotx - mean(x))/sd(x)
+
+# now we make a vector across the range of our observed covariate values
+pz <- seq(min(z),max(z),length.out = res)
+
+# fill our prediction matrix for weight with uncertainty...
+for (j in 1:res){
+  py[,j] <- exp(m1$sims.list$beta0 + m1$sims.list$beta1 * pz[j])
+  pr[,j] <- rlnorm(niter, log(py[,j]), m1$sims.list$sigma)
+}
+
+
+# create a matrix to store credible (95% and 80%) intervals
+qy <- matrix(NA, res, 5)
+qi <- matrix(NA, res, 5)
+for (j in 1:res){
+  qy[j,] <- quantile(py[,j], c(0.025,0.1,0.5,0.9,0.975))
+  qi[j,] <- quantile(pr[,j], c(0.025,0.1,0.5,0.9,0.975))
+}
+
+# melt py
+predy <- melt(py)
+names(predy) <- c('iteration','pz','E')
+
+# make a density plot of the expected relationship
+# note you can adjust the colramp to inform how the densities are plotted
+smoothScatter(predy$E ~ pz[predy$pz],                                     # y ~ and x coordinates
+              colramp = colorRampPalette(c('white','forestgreen')), # color ramp
+              nrpoints = 0,                                         # no little dark points
+              xaxt = 'n',                                           # no x-axis
+              ylab = 'Expected alligator mass (lbs)',
+              xlab = 'Alligator length (ft)', cex.lab = 2,
+              las = 1)    
+axis(side = 1, at = plotz, labels = plotx) # this is where our axis-labels come back into play
+
+# add median
+lines(qy[,3] ~ pz, lwd = 3, col = 'white', lty = 1)
+# add 80% credible intervals
+lines(qy[,2] ~ pz, lwd = 3, col = 'white', lty = 2)
+lines(qy[,4] ~ pz, lwd = 3, col = 'white', lty = 2)
+# add 95% credible intervals
+lines(qy[,1] ~ pz, lwd = 3, col = 'white', lty = 3)
+lines(qy[,5] ~ pz, lwd = 3, col = 'white', lty = 3)
+
+# add actual data
+points(y ~ z)
+
+# prediction intervals - 95% of data is inside these lines
+# vs 95% confident our mean is inside the white lines
+lines(qi[,1] ~ pz, lwd = 3, col = 'grey30', lty = 3)
+lines(qi[,5] ~ pz, lwd = 3, col = 'grey30', lty = 3)
+```
+
 
 
 ##Supplemental
