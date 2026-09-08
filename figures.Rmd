@@ -661,7 +661,7 @@ paired_dyn_boxplot <- (sin_dyn_boxplot / complex_dyn_boxplot / net_dyn_boxplot)
 ggsave(paired_dyn_boxplot,
        filename = "output/paired_dyn_boxplot.jpg",
        height = 7,
-       width = 8,
+       width = 7,
        units = "in",
        dpi = 300)
 ```
