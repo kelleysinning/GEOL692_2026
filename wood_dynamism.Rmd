@@ -839,6 +839,8 @@ mod_data_byyr <- data_byyr %>%
   filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
   mutate(site = str_replace_all(site, "_[:digit:]$", "")) %>% 
   mutate(site = factor(site))
+
+saveRDS(mod_data_byyr, file = "./data/figures_data/model_data_byyr.rds")
 ```
 
 ## specify models

@@ -676,6 +676,7 @@ ggsave(paired_dyn_boxplot,
 
 candidate models were specified in wood_dynamism.Rmd and saved to the candidate_models.rds file in figures_data/ 
 ```{r load candidate models}
+mod_data_byyr <- readRDS("./data/figures_data/model_data_byyr.rds")
 models <- readRDS("./data/figures_data/candidate_models.rds")
 ```
 
@@ -726,71 +727,112 @@ exp(complexity.m2.intercept)
 exp(complexity.m2.ratio.effect)
 ```
 generate predictions based on model
-code copied from wild591 class, need to update 
 
 ```{r}
-res <- 100
-plot(m1$sims.list$beta0, type = 'l')
-niter <- length(m1$sims.list$beta0)
-py <- matrix(NA, niter, res)
-pr <- matrix(NA, niter, res)
+x_mean <- as.numeric(attr(mod_data_byyr$ratio_accum_scaled, "scaled:center"))
+x_sd   <- as.numeric(attr(mod_data_byyr$ratio_accum_scaled, "scaled:scale"))
 
-# assess range of covariate values, and assign axis marks.
-summary(x)
-plotx <- 3:9
-plotz <- (plotx - mean(x))/sd(x)
+# create a df with new x values from which to predict repsponse values 
+# this creates 100 new values only between the min and max observed values within a site 
+pred_grid <- mod_data_byyr %>%
+  group_by(site) %>%
+  summarise(
+    x_min = min(ratio_accum_to_ch_area),
+    x_max = max(ratio_accum_to_ch_area)
+  ) %>%
+  rowwise() %>%
+  mutate(
+    pred.x = list(
+      seq(x_min, x_max, length.out = 100) # gives 100 values between min and max observed x values for each site
+    )
+  ) %>%
+  unnest(pred.x) %>% # expands them from the list column 
+  mutate(
+    ratio_accum_scaled = (pred.x - x_mean) / x_sd # scales the 100 values using the same mean and sd from model scaling
+  )
 
-# now we make a vector across the range of our observed covariate values
-pz <- seq(min(z),max(z),length.out = res)
+# create predicted values for sinuosity and complexity based on new x values
+pred_grid <- pred_grid %>%
+  mutate(
+    pred.sinuosity = predict(
+      models$sinuosity$m1, # sinuosity top model
+      newdata = pred_grid,
+      type = "response", # gives us predicted values on the original observation scale 
+      re.form = NULL
+    ),
+    pred.complexity = predict(
+      models$complexity$m2, # complexity top model
+      newdata = pred_grid,
+      type = "response", # gives us predicted values on the original observation scale 
+      re.form = NULL 
+    )
+  )
 
-# fill our prediction matrix for weight with uncertainty...
-for (j in 1:res){
-  py[,j] <- exp(m1$sims.list$beta0 + m1$sims.list$beta1 * pz[j])
-  pr[,j] <- rlnorm(niter, log(py[,j]), m1$sims.list$sigma)
-}
+pred_grid_model <- pred_grid %>%
+  select(site, ratio_accum_scaled)
 
-
-# create a matrix to store credible (95% and 80%) intervals
-qy <- matrix(NA, res, 5)
-qi <- matrix(NA, res, 5)
-for (j in 1:res){
-  qy[j,] <- quantile(py[,j], c(0.025,0.1,0.5,0.9,0.975))
-  qi[j,] <- quantile(pr[,j], c(0.025,0.1,0.5,0.9,0.975))
-}
-
-# melt py
-predy <- melt(py)
-names(predy) <- c('iteration','pz','E')
-
-# make a density plot of the expected relationship
-# note you can adjust the colramp to inform how the densities are plotted
-smoothScatter(predy$E ~ pz[predy$pz],                                     # y ~ and x coordinates
-              colramp = colorRampPalette(c('white','forestgreen')), # color ramp
-              nrpoints = 0,                                         # no little dark points
-              xaxt = 'n',                                           # no x-axis
-              ylab = 'Expected alligator mass (lbs)',
-              xlab = 'Alligator length (ft)', cex.lab = 2,
-              las = 1)    
-axis(side = 1, at = plotz, labels = plotx) # this is where our axis-labels come back into play
-
-# add median
-lines(qy[,3] ~ pz, lwd = 3, col = 'white', lty = 1)
-# add 80% credible intervals
-lines(qy[,2] ~ pz, lwd = 3, col = 'white', lty = 2)
-lines(qy[,4] ~ pz, lwd = 3, col = 'white', lty = 2)
-# add 95% credible intervals
-lines(qy[,1] ~ pz, lwd = 3, col = 'white', lty = 3)
-lines(qy[,5] ~ pz, lwd = 3, col = 'white', lty = 3)
-
-# add actual data
-points(y ~ z)
-
-# prediction intervals - 95% of data is inside these lines
-# vs 95% confident our mean is inside the white lines
-lines(qi[,1] ~ pz, lwd = 3, col = 'grey30', lty = 3)
-lines(qi[,5] ~ pz, lwd = 3, col = 'grey30', lty = 3)
+ggeffects::predict_response(
+  models$complexity$m2,
+  terms = pred_grid,
+  type = "random",
+  ci_level = 0.95,
+  bias_correction = TRUE
+)
 ```
 
+```{r}
+ggplot() +
+  geom_line(
+    data = pred_grid,
+    aes(
+      x = pred.x,
+      y = pred.sinuosity,
+      color = site
+    ),
+    linewidth = 1
+  ) +
+  geom_point(
+    data = mod_data_byyr,
+    aes(
+      x = ratio_accum_to_ch_area,
+      y = sinuosity,
+      color = site
+    ),
+    alpha = 0.5
+  ) +
+  labs(
+    title = "m1 predicted & observed values of sinuosity",
+    x = "Ratio of accumulations to ch area",
+    y = "sinuosity"
+  ) +
+  facet_wrap(~site)
+
+ggplot() +
+  geom_line(
+    data = pred_grid,
+    aes(
+      x = pred.x,
+      y = pred.complexity,
+      color = site
+    ),
+    linewidth = 1
+  ) +
+  geom_point(
+    data = mod_data_byyr,
+    aes(
+      x = ratio_accum_to_ch_area,
+      y = complexity,
+      color = site
+    ),
+    alpha = 0.5
+  ) +
+  labs(
+    title = "m2 predicted & observed values of complexity",
+    x = "Ratio of accumulations to ch area",
+    y = "complexity"
+  ) +
+  facet_wrap(~site)
+```
 
 
 ##Supplemental
