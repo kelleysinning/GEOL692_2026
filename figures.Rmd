@@ -752,86 +752,80 @@ pred_grid <- mod_data_byyr %>%
   )
 
 # create predicted values for sinuosity and complexity based on new x values
+p.sin <- predict(
+  models$sinuosity$m1, # top sinuosity model
+  newdata = pred_grid,
+  re.form = NULL,
+  type = "link", # get values on model scale, needed for calculating 95% CIs
+  se.fit = TRUE
+)
+
+p.comp <- predict(
+  models$complexity$m2, # top complexity model
+  newdata = pred_grid,
+  re.form = NULL,
+  type = "link", # get values on model scale, needed for calculating 95% CIs
+  se.fit = TRUE
+)
+
+# transform predictions and calculate transformed 95% CIs 
 pred_grid <- pred_grid %>%
   mutate(
-    pred.sinuosity = predict(
-      models$sinuosity$m1, # sinuosity top model
-      newdata = pred_grid,
-      type = "response", # gives us predicted values on the original observation scale 
-      re.form = NULL
-    ),
-    pred.complexity = predict(
-      models$complexity$m2, # complexity top model
-      newdata = pred_grid,
-      type = "response", # gives us predicted values on the original observation scale 
-      re.form = NULL 
-    )
-  )
+    # Sinuosity
+    pred.sinuosity = exp(p.sin$fit), # exp transforms us back to the original response scale 
+    sinuosity.lower = exp(p.sin$fit - 1.96 * p.sin$se.fit),
+    sinuosity.upper = exp(p.sin$fit + 1.96 * p.sin$se.fit),
 
-pred_grid_model <- pred_grid %>%
-  select(site, ratio_accum_scaled)
+    # Complexity
+    pred.complexity = exp(p.comp$fit),
+    complexity.lower = exp(p.comp$fit - 1.96 * p.comp$se.fit),
+    complexity.upper = exp(p.comp$fit + 1.96 * p.comp$se.fit)
+  ) %>% 
+  # add names for plotting
+  mutate(name = case_when(
+    site == "Indian" ~ "Indian Creek",
+    site == "Snoqualmie"  ~ "Lower Middle Fork Snoqualmie",
+    site == "Nyack" ~ "Nyack Creek", 
+    site == "Rock_WY" ~ "Rock Creek", 
+    site == "Skunk" ~ "Skunk Creek",
+    site == "Rock_WA" ~ "Upper Middle Fork Snoqualmie"
+  )) 
 
-ggeffects::predict_response(
-  models$complexity$m2,
-  terms = pred_grid,
-  type = "random",
-  ci_level = 0.95,
-  bias_correction = TRUE
-)
+mod_data_byyr <- mod_data_byyr %>% 
+  # add names for plotting
+  mutate(name = case_when(
+    site == "Indian" ~ "Indian Creek",
+    site == "Snoqualmie"  ~ "Lower Middle Fork Snoqualmie",
+    site == "Nyack" ~ "Nyack Creek", 
+    site == "Rock_WY" ~ "Rock Creek", 
+    site == "Skunk" ~ "Skunk Creek",
+    site == "Rock_WA" ~ "Upper Middle Fork Snoqualmie"
+  )) 
 ```
 
 ```{r}
 ggplot() +
-  geom_line(
-    data = pred_grid,
-    aes(
-      x = pred.x,
-      y = pred.sinuosity,
-      color = site
-    ),
-    linewidth = 1
+  # add observed values 
+  geom_point(data = mod_data_byyr,
+             aes(x = ratio_accum_to_ch_area, y = complexity,
+               color = name), alpha = 1) +
+  # add predicted lines
+  geom_line(data = pred_grid,
+            aes(x = pred.x, y = link.pred.complexity,
+                color = name), linewidth = 1) +
+  # add predicted 95% CIs
+  geom_ribbon(data = pred_grid,
+              aes(x = pred.x, ymin = complexity.lower, ymax = complexity.upper, 
+                  fill = name), alpha = 0.2, color = NA) +
+  scale_color_manual(values = name_colors) +
+  scale_fill_manual(values = name_colors) +
+  labs(x = "Ratio accumulated to channel area",
+       y = "Complexity",
+       color = "Site",
+       fill = "Site"
   ) +
-  geom_point(
-    data = mod_data_byyr,
-    aes(
-      x = ratio_accum_to_ch_area,
-      y = sinuosity,
-      color = site
-    ),
-    alpha = 0.5
-  ) +
-  labs(
-    title = "m1 predicted & observed values of sinuosity",
-    x = "Ratio of accumulations to ch area",
-    y = "sinuosity"
-  ) +
-  facet_wrap(~site)
+  facet_wrap(~name)
 
-ggplot() +
-  geom_line(
-    data = pred_grid,
-    aes(
-      x = pred.x,
-      y = pred.complexity,
-      color = site
-    ),
-    linewidth = 1
-  ) +
-  geom_point(
-    data = mod_data_byyr,
-    aes(
-      x = ratio_accum_to_ch_area,
-      y = complexity,
-      color = site
-    ),
-    alpha = 0.5
-  ) +
-  labs(
-    title = "m2 predicted & observed values of complexity",
-    x = "Ratio of accumulations to ch area",
-    y = "complexity"
-  ) +
-  facet_wrap(~site)
 ```
 
 
