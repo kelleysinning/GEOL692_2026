@@ -932,6 +932,12 @@ exp(complexity.m2.ratio.effect)
 
 ## plot model predictions
 ```{r plot sinuosity model predictions}
+# getting a color palette from rcartocolor package for 6 categories
+rcartocolor::cartocolors %>% 
+  filter(Name == "Earth") %>% 
+  dplyr::select(n6) %>% 
+  unnest(n6)
+
 # sinuosity : top model is m1, then m2, then null
 
 ## prediction plots for m1 (top model)

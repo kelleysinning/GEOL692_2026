@@ -48,10 +48,21 @@ wood_colors = c("LW_Channel" = "#BEA57D", "no_LW_Channel" = "#99C5B5")#BEA57D
 
 # these site colors are based on the rcartocolor::cartocolor %>% filter(Name=="Earth") color list for n6 
 # to match Kelley's color scheme from the z-scaled dynamism plots
-name_colors = c("Indian Creek" = "#A16928", "Lower Middle Fork Snoqualmie" = "#c29b64", 
-                "Nyack Creek" = "#e0cfa2", "Rock Creek" = "#cbd5bc", 
-                "Skunk Creek" = "#85adaf", "Upper Middle Fork Snoqualmie" ="#2887a1")
+# name_colors = c("Indian Creek" = "#A16928", 
+#                 "Nyack Creek" = "#c29b64", 
+#                 "Rock Creek" = "#e0cfa2", 
+#                 "Skunk Creek" = "#cbd5bc", 
+#                  "Upper Middle Fork Snoqualmie" = "#85adaf", 
+#                 "Lower Middle Fork Snoqualmie" = "#2887a1")
 
+# this is a different palette that implies association between snoqualmie sites 
+# with both being different shades of blue
+name_colors = c("Indian Creek" = "#96765C", 
+                "Nyack Creek" = "#C16B55",
+                "Rock Creek" = "#8F719B", 
+                "Skunk Creek" = "#5B8E55",
+                "Upper Middle Fork Snoqualmie" = "#3F6F8F", 
+                "Lower Middle Fork Snoqualmie" ="#86AFC4")
 ```
 
 # Mean wood bar plot
@@ -728,7 +739,7 @@ exp(complexity.m2.ratio.effect)
 ```
 generate predictions based on model
 
-```{r}
+```{r generate model predictions}
 x_mean <- as.numeric(attr(mod_data_byyr$ratio_accum_scaled, "scaled:center"))
 x_sd   <- as.numeric(attr(mod_data_byyr$ratio_accum_scaled, "scaled:scale"))
 
@@ -789,7 +800,10 @@ pred_grid <- pred_grid %>%
     site == "Rock_WY" ~ "Rock Creek", 
     site == "Skunk" ~ "Skunk Creek",
     site == "Rock_WA" ~ "Upper Middle Fork Snoqualmie"
-  )) 
+  ),
+  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek",
+                                 "Skunk Creek", "Upper Middle Fork Snoqualmie", "Lower Middle Fork Snoqualmie"))
+  ) 
 
 mod_data_byyr <- mod_data_byyr %>% 
   # add names for plotting
@@ -800,18 +814,21 @@ mod_data_byyr <- mod_data_byyr %>%
     site == "Rock_WY" ~ "Rock Creek", 
     site == "Skunk" ~ "Skunk Creek",
     site == "Rock_WA" ~ "Upper Middle Fork Snoqualmie"
-  )) 
+  ),
+  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek",
+                                 "Skunk Creek", "Upper Middle Fork Snoqualmie", "Lower Middle Fork Snoqualmie"))
+  ) 
 ```
 
-```{r}
-ggplot() +
+```{r plot predictions}
+plot.complexity <- ggplot() +
   # add observed values 
   geom_point(data = mod_data_byyr,
              aes(x = ratio_accum_to_ch_area, y = complexity,
                color = name), alpha = 1) +
   # add predicted lines
   geom_line(data = pred_grid,
-            aes(x = pred.x, y = link.pred.complexity,
+            aes(x = pred.x, y = pred.complexity,
                 color = name), linewidth = 1) +
   # add predicted 95% CIs
   geom_ribbon(data = pred_grid,
@@ -819,13 +836,49 @@ ggplot() +
                   fill = name), alpha = 0.2, color = NA) +
   scale_color_manual(values = name_colors) +
   scale_fill_manual(values = name_colors) +
-  labs(x = "Ratio accumulated to channel area",
+  labs(x = expression(paste("Wood accumulation area (", m^{2}, ") / channel area (", m^{2}, ")")),
        y = "Complexity",
        color = "Site",
        fill = "Site"
-  ) +
-  facet_wrap(~name)
+  ) 
+# +
+#   facet_wrap(~name)
 
+
+plot.sinuosity <- ggplot() +
+  # add observed values 
+  geom_point(data = mod_data_byyr,
+             aes(x = ratio_accum_to_ch_area, y = sinuosity,
+               color = name), alpha = 1) +
+  # add predicted lines
+  geom_line(data = pred_grid,
+            aes(x = pred.x, y = pred.sinuosity,
+                color = name), linewidth = 1) +
+  # add predicted 95% CIs
+  geom_ribbon(data = pred_grid,
+              aes(x = pred.x, ymin = sinuosity.lower, ymax = sinuosity.upper, 
+                  fill = name), alpha = 0.2, color = NA) +
+  scale_color_manual(values = name_colors) +
+  scale_fill_manual(values = name_colors) +
+  labs(x = expression(paste("Wood accumulation area (", m^{2}, ") / channel area (", m^{2}, ")")),
+       y = "Sinuosity",
+       color = "Site",
+       fill = "Site"
+  )
+# +
+#   facet_wrap(~name)
+
+
+pred_plot_final <- (plot.complexity + plot.sinuosity) +
+  plot_layout(guides = "collect",
+              axes = "collect")
+
+ggsave(pred_plot_final,
+       filename = "output/model_prediction_plot.jpg",
+       height = 7,
+       width = 7,
+       units = "in",
+       dpi = 300)
 ```
 
 
