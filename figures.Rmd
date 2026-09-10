@@ -825,11 +825,11 @@ plot.complexity <- ggplot() +
   # add observed values 
   geom_point(data = mod_data_byyr,
              aes(x = ratio_accum_to_ch_area, y = complexity,
-               color = name), alpha = 1) +
+               color = name), alpha = 1, size = 1) +
   # add predicted lines
   geom_line(data = pred_grid,
             aes(x = pred.x, y = pred.complexity,
-                color = name), linewidth = 1) +
+                color = name), linewidth = 0.5) +
   # add predicted 95% CIs
   geom_ribbon(data = pred_grid,
               aes(x = pred.x, ymin = complexity.lower, ymax = complexity.upper, 
@@ -850,11 +850,11 @@ plot.sinuosity <- ggplot() +
   # add observed values 
   geom_point(data = mod_data_byyr,
              aes(x = ratio_accum_to_ch_area, y = sinuosity,
-               color = name), alpha = 1) +
+               color = name), alpha = 1, size = 1) +
   # add predicted lines
   geom_line(data = pred_grid,
             aes(x = pred.x, y = pred.sinuosity,
-                color = name), linewidth = 1) +
+                color = name), linewidth = 0.5) +
   # add predicted 95% CIs
   geom_ribbon(data = pred_grid,
               aes(x = pred.x, ymin = sinuosity.lower, ymax = sinuosity.upper, 
