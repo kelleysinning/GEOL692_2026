@@ -840,7 +840,8 @@ plot.complexity <- ggplot() +
        y = "Complexity",
        color = "Site",
        fill = "Site"
-  ) 
+  ) +
+  theme(text = element_text(size = 12))
 # +
 #   facet_wrap(~name)
 
@@ -864,19 +865,20 @@ plot.sinuosity <- ggplot() +
        y = "Sinuosity",
        color = "Site",
        fill = "Site"
-  )
+  ) +
+  theme(text = element_text(size = 12))
 # +
 #   facet_wrap(~name)
 
 
-pred_plot_final <- (plot.complexity + plot.sinuosity) +
+pred_plot_final <- (plot.complexity / plot.sinuosity) +
   plot_layout(guides = "collect",
               axes = "collect")
 
 ggsave(pred_plot_final,
        filename = "output/model_prediction_plot.jpg",
-       height = 7,
-       width = 7,
+       height = 6.5,
+       width = 7.5,
        units = "in",
        dpi = 300)
 ```
