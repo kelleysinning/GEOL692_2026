@@ -722,6 +722,11 @@ exp(sinuosity.m1.intercept)
 # i.e. for every 1 sd increase in ratio of wood accum there is a 1.163508 increase in sinuosity
 exp(sinuosity.m1.ratio.effect)
 
+# confidence intervals for each estimate on the original scale
+# these are still interpreted as per 1sd increase in ratio of accum
+exp(confint(models$sinuosity$m1, parm = "beta_", method = "Wald"))
+
+
 # for the complexity model, the intercept is the global mean complexity (across all sites)
 # and the ratio effect is the effect of 1 sd increase in wood accumulation on complexity 
 # both of these are on the log scale
@@ -736,6 +741,11 @@ exp(complexity.m2.intercept)
 # ratio effect is still standardized 
 # i.e. for every 1 sd increase in ratio of wood accum there is a 0.9920911 increase in complexity 
 exp(complexity.m2.ratio.effect)
+
+# confidence intervals for each estimate on the original scale
+# these are still interpreted as per 1sd increase in ratio of accum
+exp(confint(models$complexity$m1, parm = "beta_", method = "Wald"))
+
 ```
 generate predictions based on model
 
