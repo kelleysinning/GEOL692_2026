@@ -13,6 +13,7 @@ dynamism_data <- read_csv("data/figures_data/dynamism_data.csv")
 data_byyr <- read_csv("data/figures_data/data_byyr.csv") 
 
 all_data_byyr <- read.csv("data/ALL_metrics_07022026.csv") 
+naip_metrics <- read_csv("data/figures_data/NAIP_metadata.csv")
 ```
 
 ```{r clean loaded data}
@@ -30,12 +31,12 @@ all_data_byyr <- read.csv("data/ALL_metrics_07022026.csv")
 
 data_byyr <- data_byyr %>% 
   rename(reach = site,
-         site = river) %>% 
+         site = river) %>%
   mutate(site_reach = paste0(site,reach,ab)) %>% 
   mutate(ratio_accum_to_ch_area = accum_area/channel_area,
          piece_per_100m = (wood_pieces/channel_length)*100,
          site = factor(site),
-         reach = factor(reach))
+         reach = factor(reach)) 
 
 all_data_byyr <- all_data_byyr %>% 
   rename(reach = site,
@@ -56,7 +57,8 @@ wood_colors = c("LW_Channel" = "#BEA57D", "no_LW_Channel" = "#99C5B5")#BEA57D
 #                 "Lower Middle Fork Snoqualmie" = "#2887a1")
 
 # this is a different palette that implies association between snoqualmie sites 
-# with both being different shades of blue
+# with both being different shades of blue 
+  # ^ That is so smart -S
 name_colors = c("Indian Creek" = "#96765C", 
                 "Nyack Creek" = "#C16B55",
                 "Rock Creek" = "#8F719B", 
@@ -902,48 +904,95 @@ ggsave(pred_plot_final,
 
 # how does standardized wood (the ratio of wood accumulation to channel area and num of pieces per 100 m of channel) change over time?
 
+# Make sequential color palette
+
+# reso_palette <- c("#6B0077", "#7663A2","#90A7CC","#A5C3DB","#C0DCE8")
+# 
+# reso_palette <- c("#A93154", "#BB4E93","#BC71BB","#B39AD8","#AEB6E5")
+# 
+# reso_palette <- c("#255668", "#00777B","#08A47F","#94D268","#EDEF5C")
+
+reso_palette <- c("#4B1D91", "#B91D9B","#ED567D","#F38C61","#F7BF4B")
+
+# Join naip metrics to data_byyr
+  # Create join attribute
+
+naip_metrics <- naip_metrics %>%
+  rename(reach = site,
+         site = river) %>%
+  mutate(site_reach_year = paste0(site,reach,year))  %>%
+  mutate(spatial_resolution_m = as.factor(spatial_resolution_m))
+
+data_byyr <- data_byyr %>%
+  mutate(site_reach_year = paste0(site,reach,year)) 
+  
+
+# Join
+data_byyr <- data_byyr %>%
+  left_join(naip_metrics, by = join_by(site_reach_year))
+
 p1 <- data_byyr %>% 
-  ggplot(aes(x=year, y=piece_per_100m, color = name, shape = reach)) +
-  geom_point() +
-  geom_line(aes(group = site_reach)) +
+  drop_na(spatial_resolution_m) %>%
+  mutate(spatial_resolution_m = as.factor(spatial_resolution_m),
+         spatial_resolution_m = factor(spatial_resolution_m, levels = c("2", "1", "0.6", "0.5", "0.3"))) %>%
+  ggplot(aes(x=year.y, y=piece_per_100m)) +
+  geom_line(aes(linetype = reach.y, group = site_reach)) +
+  geom_point(aes(shape = name, color = spatial_resolution_m)) +
   theme_bw() +
   labs(x = "Year",
        y = "# of pieces/100 m") +
   geom_text(
-    data = data_byyr %>% slice_max(order_by = year, n = 1, by = ab), # first point
+    data = data_byyr %>% 
+      slice_max(order_by = year.y, n = 1, by = ab), # first point
     aes(label = ab),
     hjust = 0,        
     nudge_x = 0.2,     
     show.legend = FALSE) +
-  scale_shape_discrete(
+  scale_color_manual(values = reso_palette, name = "Image resolution (m)") +
+  scale_shape_discrete(name = "Site") +
+  scale_linetype_discrete(
     name = "Reach type",
     labels = c("Wood rich", "Wood poor")) + # LW is alphabetically before no_LW 
-  scale_color_discrete(name = "Site") +
   theme(axis.text = element_blank(),
-        axis.title.x = element_blank())
+        axis.title.x = element_blank(),
+        legend.position = "none")
 # General trend of pieces increasing over time, this is likely an artifact of the imagery resolution improving. Definitely include this in the SI. This is not true for accumulations.
 
-p2 <- data_byyr %>%
-  ggplot(aes(x=year, y=ratio_accum_to_ch_area, color = name, shape = reach)) +
-  geom_point() +
-  geom_line(aes(group = site_reach)) +
+p1
+
+p2 <- data_byyr %>% 
+  drop_na(spatial_resolution_m) %>%
+  mutate(spatial_resolution_m = factor(spatial_resolution_m, levels = c("2", "1", "0.6", "0.5", "0.3"))) %>%
+  ggplot(aes(x=year.y, y=ratio_accum_to_ch_area)) +
+  geom_line(aes(linetype = reach.y, group = site_reach)) +
+  geom_point(aes(shape = name, color = spatial_resolution_m)) +
   theme_bw() +
   labs(x = "Year",
        y = "Wood accumulation area/channel area") +
   geom_text(
-    data = data_byyr %>% slice_max(order_by = year, n = 1, by = ab), # first point
+    data = data_byyr %>% 
+      slice_max(order_by = year.y, n = 1, by = ab), # first point
     aes(label = ab),
     hjust = 0,        
     nudge_x = 0.2,     
     show.legend = FALSE) +
-  theme(legend.position = "none")
+  scale_linetype_discrete(
+    name = "Reach type",
+    labels = c("Wood rich", "Wood poor")) + # LW is alphabetically before no_LW 
+  scale_color_manual(values = reso_palette) +
+  scale_color_manual(values = reso_palette, name = "Image resolution (m)") +
+  scale_shape_discrete(name = "Site") +
+  scale_linetype_discrete(
+    name = "Reach type",
+    labels = c("Wood rich", "Wood poor"))  # LW is alphabetically before no_LW 
+p2
 
 wood_time_si <- (p1/p2)
 
 ggsave(wood_time_si,
        filename = "output/wood_time_si.jpg",
        dpi = 300,
-       width = 7,
-       height = 6,
+       width = 8,
+       height = 9,
        units = "in")
 ```
