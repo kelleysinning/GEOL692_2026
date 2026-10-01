@@ -648,9 +648,13 @@ mutate(reach = recode(
   ggplot(aes(x = reach, y = sinuosity_dynamism)) +
   geom_boxplot() +
   geom_point()+
-  geom_line(aes(group = name, color = name)) +
+  geom_line(aes(group = name, color = name), linewidth = 1) +
+  scale_color_manual(values = name_colors) +
+  labs(y = "Sinuosity dynamism") +
   theme_bw() +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank())
 
 complex_dyn_boxplot <- dynamism_data %>%
 mutate(reach = recode(
@@ -660,8 +664,12 @@ mutate(reach = recode(
   ggplot(aes(x = reach, y = complexity_dynamism)) +
   geom_boxplot() +
   geom_point()+
-  geom_line(aes(group = name, color = name)) +
-  theme_bw()
+  geom_line(aes(group = name, color = name), linewidth = 1) +
+  scale_color_manual(values = name_colors, name  = "Site") +
+  labs(y = "Complexity dynamism") +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank())
 complex_dyn_boxplot
 
 net_dyn_boxplot <- dynamism_data %>%
@@ -672,11 +680,16 @@ mutate(reach = recode(
   ggplot(aes(x = reach, y = net_change_dynamism)) +
   geom_boxplot() +
   geom_point()+
-  geom_line(aes(group = name, color = name)) +
+  geom_line(aes(group = name, color = name), linewidth = 1) +
   theme_bw() +
+  scale_color_manual(values = name_colors) +
+  labs(y = "Net change dynamism",
+       x = "Reach type") +
   theme(legend.position = "none")
 
 paired_dyn_boxplot <- (sin_dyn_boxplot / complex_dyn_boxplot / net_dyn_boxplot)
+
+paired_dyn_boxplot
 
 ggsave(paired_dyn_boxplot,
        filename = "output/paired_dyn_boxplot.jpg",
@@ -992,7 +1005,7 @@ wood_time_si <- (p1/p2)
 ggsave(wood_time_si,
        filename = "output/wood_time_si.jpg",
        dpi = 300,
-       width = 8,
-       height = 9,
+       width = 7,
+       height = 8,
        units = "in")
 ```
