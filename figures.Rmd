@@ -650,7 +650,7 @@ mutate(reach = recode(
   geom_point()+
   geom_line(aes(group = name, color = name), linewidth = 1) +
   scale_color_manual(values = name_colors) +
-  labs(y = "Sinuosity dynamism") +
+  labs(y = "Sinuosity dynamism/year") +
   theme_bw() +
   theme(legend.position = "none",
         axis.title.x = element_blank(),
@@ -666,7 +666,7 @@ mutate(reach = recode(
   geom_point()+
   geom_line(aes(group = name, color = name), linewidth = 1) +
   scale_color_manual(values = name_colors, name  = "Site") +
-  labs(y = "Complexity dynamism") +
+  labs(y = "Complexity dynamism/year") +
   theme_bw() +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_blank())
@@ -683,7 +683,7 @@ mutate(reach = recode(
   geom_line(aes(group = name, color = name), linewidth = 1) +
   theme_bw() +
   scale_color_manual(values = name_colors) +
-  labs(y = "Net change dynamism",
+  labs(y = "Net change dynamism/year",
        x = "Reach type") +
   theme(legend.position = "none")
 
