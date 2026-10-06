@@ -544,14 +544,15 @@ z_pieces <- dynamism_cubed %>% ggplot(aes(
     size = 3,
     fontface = "bold") +
   facet_wrap(~reach) +
-    facet_wrap(~reach, scales = "free_x") + # delete scale = "free_x" if you want each reach on the same scale
+    facet_wrap(~reach ) + # delete scale = "free_x" if you want each reach on the same scale
     labs(
     x = "Mean wood pieces (per 100m)",
     y = "Standardized dynamism (z-score)",
     color = "Dynamism Metric",
     shape = "Site")+
   xlim(0, NA) +
-  theme_bw()
+  theme_bw() +
+  theme(panel.spacing.x = unit(0.5, "cm"))
 
 # Mean wood accumulation across site and reach
 z_acc <- ggplot(
@@ -583,18 +584,20 @@ z_acc <- ggplot(
     color = "black",
     size = 3,
     fontface = "bold") +
-    facet_wrap(~reach, scales = "free_x") + # delete scale = "free_x" if you want on the same scale
+    facet_wrap(~reach) + # delete scale = "free_x" if you want on the same scale
     labs(
     x = "Mean wood accumulation (per area)",
     y = "Standardized dynamism (z-score)",
     color = "Dynamism Metric",
     shape = "Site")+
-  xlim(0, NA) +
+  scale_x_continuous(expand = c(0,0.01),
+                     limits = c(0,NA)) +
   theme_bw()+
   theme(
     axis.title.y = element_blank(),
     axis.text.y = element_blank(),
-    axis.ticks.y = element_blank()
+    axis.ticks.y = element_blank(),
+    panel.spacing.x = unit(0.5, "cm")
   )
 
 
