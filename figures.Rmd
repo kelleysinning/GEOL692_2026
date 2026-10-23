@@ -85,9 +85,11 @@ p1 <- dynamism_data %>%
   geom_text(aes(label = ab),
             position = position_dodge2(width = 0.9),
             vjust = -0.9) +
-  theme(axis.text = element_blank(),
+  theme(axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         legend.position = "none")
+
+p1
 
 # Wood accumulation area normalized by channel area at each time step, averaged for each site
 
@@ -102,10 +104,29 @@ p2 <- dynamism_data %>%
   scale_x_discrete(guide = guide_axis(angle = 25)) +
   theme_bw()  +
   labs(x = "Site",
-       y = "Mean wood accumulation area:channel area") +
+       y = "Mean wood accumulation area (m)/Channel area (m)") +
   geom_text(aes(label = ab),
             position = position_dodge2(width = 0.9),
-            vjust = -0.9)
+            vjust = -0.9) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        legend.position = "none")
+
+p2
+
+ggsave(p2,
+       filename = "output/wood_a.jpg",
+       height = 1.75,
+       width = 7.5,
+       units = "in",
+       dpi = 300)
+
+ggsave(p1,
+       filename = "output/wood_p.jpg",
+       height = 1.75,
+       width = 8,
+       units = "in",
+       dpi = 300)
 
 mean_wood_by_site <- (p1 / p2)
 
@@ -128,7 +149,7 @@ acc_over_time <- data_byyr %>%
   ggplot(aes(x = year, y = ratio_accum_to_ch_area, color = reach)) +
   geom_point(size = 2) +
   geom_line(aes(group = site_reach)) +
-  facet_wrap(~name) +
+  facet_wrap(~name, nrow = 1) +
   scale_color_manual(values = wood_colors,
           name = "Reach Type",
           labels = c("Wood rich", "Wood poor")) +
@@ -145,13 +166,13 @@ acc_over_time <- data_byyr %>%
     show.legend = FALSE,
     color = "black") +
   theme(legend.position = "inside",
-        legend.position.inside = c(0.1,0.9),
+        legend.position.inside = c(0.07,0.7),
         legend.background = element_rect(color = "black", linewidth = 0.25))
 
 ggsave(acc_over_time,
        filename = "output/acc_over_time_facet.jpg",
-       height = 6,
-       width = 7.5,
+       height = 2.5,
+       width = 9,
        units = "in",
        dpi = 300)
 ```

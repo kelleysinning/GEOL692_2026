@@ -6,16 +6,13 @@ output: html_document
 ---
 
 ```{r}
-###
-# this version edited 07022026 by Noël for redoing metrics calcs from ben
-library(tidyverse)
-library(plotly)
+source("setup.R")
 ```
 
 ```{r}
-data <- read_csv("./data/Metrics/ALL_metrics_07022026.csv")
+data <- read_csv("data/ALL_metrics_07022026.csv")
 
-data_byyr <- read_csv("./data/Metrics/SelectMetricsByYear_07022026.csv")
+data_byyr <- read_csv("./data/figures_data/data_byyr.csv")
 
 wood_metrics <- data_byyr %>%
   rename(reach = site,
@@ -33,7 +30,7 @@ wood_metrics <- data_byyr %>%
 ```{r}
 dynamism <- data %>% 
   rename(reach = site,
-         site = river) %>% 
+         site = river) %>%
   group_by(site, reach) %>%
   summarize(
     #Calculate dynamism metric
