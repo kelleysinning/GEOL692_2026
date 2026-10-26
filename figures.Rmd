@@ -244,6 +244,7 @@ data_byyr %>%
 data_byyr %>%
   group_by(reach) %>%
   summarize(mean_norm_accum = mean(ratio_accum_to_ch_area))
+
 ```
 
 
@@ -771,6 +772,12 @@ ggsave(paired_dyn_boxplot,
        width = 7,
        units = "in",
        dpi = 300)
+
+dynamism_data %>%
+  group_by(reach) %>%
+  summarize(median_sin = median(sinuosity_dynamism),
+            median_complex = median(complexity_dynamism),
+            median_net_ch = median(net_change_dynamism))
 ```
 ## model results figures
 
