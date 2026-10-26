@@ -9,11 +9,31 @@ output: html_document
 
 source("setup.R")
 
-dynamism_data <- read_csv("data/figures_data/dynamism_data.csv")
-data_byyr <- read_csv("data/figures_data/data_byyr.csv") 
+dynamism_data <- read_csv("data/figures_data/dynamism_data.csv") %>%
+  mutate(  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek", "Skunk Creek", "Lower Middle Fork Snoqualmie", "Upper Middle Fork Snoqualmie"))) 
+
+data_byyr <- read_csv("data/figures_data/data_byyr.csv") %>%  
+  mutate(  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek", "Skunk Creek", "Lower Middle Fork Snoqualmie", "Upper Middle Fork Snoqualmie"))) 
 
 all_data_byyr <- read.csv("data/ALL_metrics_07022026.csv") 
-naip_metrics <- read_csv("data/figures_data/NAIP_metadata.csv")
+
+naip_metrics <- read_csv("data/figures_data/NAIP_metadata.csv") %>%
+  rename(reach = site,
+         site = river) %>%
+  mutate(site_reach_year = paste0(site,reach,year))  %>%
+  mutate(spatial_resolution_m = as.factor(spatial_resolution_m)) %>%
+    mutate(name = case_when(
+    site == "Indian" ~ "Indian Creek",
+    site == "Snoqualmie"  ~ "Lower Middle Fork Snoqualmie",
+    site == "Nyack" ~ "Nyack Creek", 
+    site == "Rock_WY" ~ "Rock Creek", 
+    site == "Skunk" ~ "Skunk Creek",
+    site == "Rock_WA_1" ~ "Upper Middle Fork Snoqualmie",
+    site == "Rock_WA_2" ~ "Upper Middle Fork Snoqualmie"
+  ),
+  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek",
+                                 "Skunk Creek", "Lower Middle Fork Snoqualmie", "Upper Middle Fork Snoqualmie"))
+  ) 
 ```
 
 ```{r clean loaded data}
@@ -67,7 +87,7 @@ name_colors = c("Indian Creek" = "#96765C",
                 "Lower Middle Fork Snoqualmie" ="#86AFC4")
 ```
 
-# Mean wood bar plot
+# Mean + facet wrap wood bar plot
 
 ```{r}
 
@@ -81,7 +101,7 @@ p1 <- dynamism_data %>%
                     labels = c("Wood rich", "Wood poor")) +
   scale_x_discrete(guide = guide_axis(angle = 25)) +
   theme_bw()  +
-  labs(y = "Mean # pieces/100 m") +
+  labs(y = str_wrap("Mean # pieces/100 m", width = 30)) +
   geom_text(aes(label = ab),
             position = position_dodge2(width = 0.9),
             vjust = -0.9) +
@@ -104,7 +124,7 @@ p2 <- dynamism_data %>%
   scale_x_discrete(guide = guide_axis(angle = 25)) +
   theme_bw()  +
   labs(x = "Site",
-       y = "Mean wood accumulation area (m)/Channel area (m)") +
+       y = str_wrap("Mean wood accumulation area (m)/Channel area (m)", width = 30)) +
   geom_text(aes(label = ab),
             position = position_dodge2(width = 0.9),
             vjust = -0.9) +
@@ -137,26 +157,19 @@ ggsave(mean_wood_by_site,
        units = "in",
        dpi = 300)
 
-```
 
-# Metrics X time
-
-## Wood x time facet wrap
-
-```{r}
 acc_over_time <- data_byyr %>%
   group_by(ab) %>%
   ggplot(aes(x = year, y = ratio_accum_to_ch_area, color = reach)) +
   geom_point(size = 2) +
   geom_line(aes(group = site_reach)) +
-  facet_wrap(~name, nrow = 1) +
+  facet_wrap(~name, nrow = 1, labeller = label_wrap_gen(width = 20)) +
   scale_color_manual(values = wood_colors,
           name = "Reach Type",
           labels = c("Wood rich", "Wood poor")) +
   labs(x = "Year",
-       y = "Wood accumulation area (m)/Channel area (m)") + 
-
-    theme_bw() +
+       y = str_wrap("Wood accumulation area (m)/Channel area (m)", width = 30)) + 
+  theme_bw() +
   geom_text(
     data = data_byyr %>% 
       slice_min(order_by = year, n = 1, by = ab), # first point
@@ -167,11 +180,23 @@ acc_over_time <- data_byyr %>%
     color = "black") +
   theme(legend.position = "inside",
         legend.position.inside = c(0.07,0.7),
-        legend.background = element_rect(color = "black", linewidth = 0.25))
+        legend.background = element_rect(color = "black", linewidth = 0.25),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.background = element_blank(),
+        strip.text = element_text(face = "bold"))
 
 ggsave(acc_over_time,
        filename = "output/acc_over_time_facet.jpg",
-       height = 2.5,
+       height = 3,
+       width = 9,
+       units = "in",
+       dpi = 300)
+
+figure5 <- (p1 / p2 / acc_over_time)
+
+ggsave(figure5,
+       filename = "output/figure5.jpg",
+       height = 7.5,
        width = 9,
        units = "in",
        dpi = 300)
@@ -193,14 +218,35 @@ data_byyr %>%
             max_year = year[which.max(accum_area)]
             )
 
+# Normalized accum area stats
+data_byyr %>%
+  group_by(reach) %>%
+  summarize(mean = mean(ratio_accum_to_ch_area),
+            min = min(ratio_accum_to_ch_area),
+            min_name = name[which.min(ratio_accum_to_ch_area)],
+            min_year = year[which.min(ratio_accum_to_ch_area)],
+            max = max(ratio_accum_to_ch_area),
+            max_name = name[which.max(ratio_accum_to_ch_area)],
+            max_year = year[which.max(ratio_accum_to_ch_area)]
+            )
+
 # Wood means by reach
 
 data_byyr %>%
   group_by(name, reach, ab) %>%
   summarize(mean_pieces = mean(wood_pieces),
-            mean_accum = mean(accum_area)
+            mean_accum = mean(accum_area),
+            mean_norm_pieces = mean(piece_per_100m),
+            mean__norm_accum = mean(ratio_accum_to_ch_area),
             )
+
+
+data_byyr %>%
+  group_by(reach) %>%
+  summarize(mean_norm_accum = mean(ratio_accum_to_ch_area))
 ```
+
+
 
 
 ## Ch metrics x time facet wrap
@@ -213,7 +259,8 @@ complexity_over_time <- data_byyr %>%
   geom_point(size = 2) +
   geom_line(aes(group = site_reach)) +
   facet_wrap(~name,
-             nrow = 1) + # Remove if want one plot per metric
+             nrow = 1,
+             labeller = label_wrap_gen(width = 20)) + # Remove if want one plot per metric
   scale_color_manual(values = wood_colors,
           name = "Reach type",
           labels = c("Wood rich", "Wood poor")) +
@@ -230,8 +277,10 @@ complexity_over_time <- data_byyr %>%
   theme(axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         legend.position = "inside",
-        legend.position.inside = c(0.06,0.25),
-        legend.background = element_rect(color = "black", linewidth = 0.25))
+        legend.position.inside = c(0.078,0.3),
+        legend.background = element_rect(color = "black", linewidth = 0.25),
+        strip.background = element_blank(),
+        strip.text = element_text(face = "bold"))
 
 complexity_over_time
 
@@ -308,6 +357,7 @@ ch_area_over_time <- data_byyr %>%
   theme(legend.position = "none",
         strip.background = element_blank(),
         strip.text = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
         )
 
 # ggsave(ch_area_over_time,
@@ -323,8 +373,8 @@ metric_grid <- (complexity_over_time / sinuosity_over_time / ch_area_over_time)
 
 ggsave(metric_grid,
        filename = "output/metric_grid.jpg",
-       height = 7,
-       width = 12,
+       height = 6,
+       width = 8,
        units = "in",
        dpi = 300)
 ```
@@ -955,10 +1005,22 @@ reso_palette <- c("#4B1D91", "#B91D9B","#ED567D","#F38C61","#F7BF4B")
   # Create join attribute
 
 naip_metrics <- naip_metrics %>%
-  rename(reach = site,
-         site = river) %>%
+  # rename(reach = site,
+  #        site = river) %>%
   mutate(site_reach_year = paste0(site,reach,year))  %>%
-  mutate(spatial_resolution_m = as.factor(spatial_resolution_m))
+  mutate(spatial_resolution_m = as.factor(spatial_resolution_m)) %>%
+    mutate(name = case_when(
+    site == "Indian" ~ "Indian Creek",
+    site == "Snoqualmie"  ~ "Lower Middle Fork Snoqualmie",
+    site == "Nyack" ~ "Nyack Creek", 
+    site == "Rock_WY" ~ "Rock Creek", 
+    site == "Skunk" ~ "Skunk Creek",
+    site == "Rock_WA_1" ~ "Upper Middle Fork Snoqualmie",
+    site == "Rock_WA_2" ~ "Upper Middle Fork Snoqualmie"
+  ),
+  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek",
+                                 "Skunk Creek", "Upper Middle Fork Snoqualmie", "Lower Middle Fork Snoqualmie"))
+  ) 
 
 data_byyr <- data_byyr %>%
   mutate(site_reach_year = paste0(site,reach,year)) 
