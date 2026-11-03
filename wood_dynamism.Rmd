@@ -827,7 +827,19 @@ dynamism_data %>%
 # Models
 
 ```{r create model df}
-mod_data_byyr <- data_byyr %>% 
+# updated on 11/3/2026 with the new data_byyr.csv Shayla created on 10/28
+
+new_data_byyr <- read_csv("data/figures_data/data_byyr.csv") 
+
+new_data_byyr <- new_data_byyr %>% 
+  mutate(site_reach = paste0(site,reach)) %>% 
+  mutate(ratio_accum_to_ch_area = accum_area/channel_area,
+         piece_per_100m = (wood_pieces/channel_length)*100,
+         site = factor(site),
+         reach = factor(reach))
+
+
+mod_data_byyr <- new_data_byyr %>% 
   mutate(ratio_accum_scaled = scale(ratio_accum_to_ch_area, 
                                     center = TRUE, # centers ratio values around mean ratio which is then set to 0 
                                     scale = TRUE), # scale changes a value to the # of sd from the mean value
@@ -836,6 +848,7 @@ mod_data_byyr <- data_byyr %>%
                                    scale = TRUE),
          year_c = scale(year, # centers years around a mean (set to 0) value for year, makes for a more interpretable effect
                         center = TRUE, scale = FALSE)) %>% 
+  mutate(site_reach = paste0(site, reach)) %>% 
   filter(site_reach != "Rock_WA_2no_LW_Channel") %>% 
   mutate(site = str_replace_all(site, "_[:digit:]$", "")) %>% 
   mutate(site = factor(site))
@@ -878,6 +891,7 @@ models <- map(set_names(responses), fit_candidates, data = mod_data_byyr)
 
 saveRDS(models, file = "./data/figures_data/candidate_models.rds")
 ```
+
 
 ## model selection using AICc
 - model selection: AICc is preferred for small sample sizes which is when the number of data points / number of parameters < 40 (n/k < 40). we have 126 observations, which for the null model means we're not in the small sample size world (k=3), but for all other models we are because we have to estimate at least 4 parameters. it's good to use the same criteria across models so we'll use AICc for all. the aictab function in the AICcmodavg does this for us.
