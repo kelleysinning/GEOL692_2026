@@ -1,0 +1,1014 @@
+---
+title: "figures"
+output: html_document
+---
+# Setup
+
+```{r everyone load data, message = FALSE}
+# this chunk should just work for everyone when you open the project. I copied the data into a subfolder called data within this project, but in case it doesn't work I left Noel and Kelley's load chunks below
+
+source("setup.R")
+
+dynamism_data <- read_csv("data/figures_data/dynamism_data.csv")
+data_byyr <- read_csv("data/figures_data/data_byyr.csv") 
+
+all_data_byyr <- read.csv("data/ALL_metrics_07022026.csv") 
+naip_metrics <- read_csv("data/figures_data/NAIP_metadata.csv")
+```
+
+```{r clean loaded data}
+## this should work after you run the right version of data loading above
+
+# dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
+#   bind_rows( # also want to add back the mod rock_WA site
+#     dynamism_data %>% 
+#       slice(6) %>% 
+#       mutate(across(
+#         c(site_reach, site),
+#         ~ str_replace_all(.x, "_1", "_2")
+#         ))
+#     ) 
+
+data_byyr <- data_byyr %>% 
+  rename(reach = site,
+         site = river) %>%
+  mutate(site_reach = paste0(site,reach,ab)) %>% 
+  mutate(ratio_accum_to_ch_area = accum_area/channel_area,
+         piece_per_100m = (wood_pieces/channel_length)*100,
+         site = factor(site),
+         reach = factor(reach)) 
+
+all_data_byyr <- all_data_byyr %>% 
+  rename(reach = site,
+         site = river) %>% 
+  mutate(site_reach = paste0(site,reach))
+```
+
+```{r plot settings}
+wood_colors = c("LW_Channel" = "#BEA57D", "no_LW_Channel" = "#99C5B5")#BEA57D
+
+# these site colors are based on the rcartocolor::cartocolor %>% filter(Name=="Earth") color list for n6 
+# to match Kelley's color scheme from the z-scaled dynamism plots
+# name_colors = c("Indian Creek" = "#A16928", 
+#                 "Nyack Creek" = "#c29b64", 
+#                 "Rock Creek" = "#e0cfa2", 
+#                 "Skunk Creek" = "#cbd5bc", 
+#                  "Upper Middle Fork Snoqualmie" = "#85adaf", 
+#                 "Lower Middle Fork Snoqualmie" = "#2887a1")
+
+# this is a different palette that implies association between snoqualmie sites 
+# with both being different shades of blue 
+  # ^ That is so smart -S
+name_colors = c("Indian Creek" = "#96765C", 
+                "Nyack Creek" = "#C16B55",
+                "Rock Creek" = "#8F719B", 
+                "Skunk Creek" = "#5B8E55",
+                "Upper Middle Fork Snoqualmie" = "#3F6F8F", 
+                "Lower Middle Fork Snoqualmie" ="#86AFC4")
+```
+
+# Mean wood bar plot
+
+```{r}
+
+##### mean wood values by site #####
+p1 <- dynamism_data %>% 
+  group_by(ab) %>%
+  ggplot(aes(x = name, y = avg_wood_pieces_per100m, fill = reach)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  scale_fill_manual(values = wood_colors,
+                    name = "Reach Type",
+                    labels = c("Wood rich", "Wood poor")) +
+  scale_x_discrete(guide = guide_axis(angle = 25)) +
+  theme_bw()  +
+  labs(y = "Mean # pieces/100 m") +
+  geom_text(aes(label = ab),
+            position = position_dodge2(width = 0.9),
+            vjust = -0.9) +
+  theme(axis.text = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+
+# Wood accumulation area normalized by channel area at each time step, averaged for each site
+
+p2 <- dynamism_data %>% 
+  group_by(ab) %>%
+  ggplot(aes(x = name, y = mean_wood_accum_per_area, fill = reach)) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  scale_fill_manual(values = wood_colors,
+                    name = "Reach Type",
+                    labels = c("Wood rich", "Wood poor")) +
+  theme(legend.position = "none") +
+  scale_x_discrete(guide = guide_axis(angle = 25)) +
+  theme_bw()  +
+  labs(x = "Site",
+       y = "Mean wood accumulation area:channel area") +
+  geom_text(aes(label = ab),
+            position = position_dodge2(width = 0.9),
+            vjust = -0.9)
+
+mean_wood_by_site <- (p1 / p2)
+
+ggsave(mean_wood_by_site,
+       filename = "output/mean_wood_by_site.jpg",
+       height = 6.5,
+       width = 7,
+       units = "in",
+       dpi = 300)
+
+```
+
+# Metrics X time
+
+## Wood x time facet wrap
+
+```{r}
+acc_over_time <- data_byyr %>%
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = ratio_accum_to_ch_area, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name) +
+  scale_color_manual(values = wood_colors,
+          name = "Reach Type",
+          labels = c("Wood rich", "Wood poor")) +
+  labs(x = "Year",
+       y = "Wood accumulation area (m)/Channel area (m)") + 
+
+    theme_bw() +
+  geom_text(
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -2,     
+    show.legend = FALSE,
+    color = "black") +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.1,0.9),
+        legend.background = element_rect(color = "black", linewidth = 0.25))
+
+ggsave(acc_over_time,
+       filename = "output/acc_over_time_facet.jpg",
+       height = 6,
+       width = 7.5,
+       units = "in",
+       dpi = 300)
+```
+
+### Wood summary stats
+```{r}
+
+# Accum area summary stats
+
+data_byyr %>%
+  group_by(reach) %>%
+  summarize(mean = mean(accum_area),
+            min = min(accum_area),
+            min_name = name[which.min(accum_area)],
+            min_year = year[which.min(accum_area)],
+            max = max(accum_area),
+            max_name = name[which.max(accum_area)],
+            max_year = year[which.max(accum_area)]
+            )
+
+# Wood means by reach
+
+data_byyr %>%
+  group_by(name, reach, ab) %>%
+  summarize(mean_pieces = mean(wood_pieces),
+            mean_accum = mean(accum_area)
+            )
+```
+
+
+## Ch metrics x time facet wrap
+
+```{r}
+# Complexity
+complexity_over_time <- data_byyr %>%
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = complexity, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name,
+             nrow = 1) + # Remove if want one plot per metric
+  scale_color_manual(values = wood_colors,
+          name = "Reach type",
+          labels = c("Wood rich", "Wood poor")) +
+  labs(y = "Complexity (m/m)") + 
+    theme_bw() +
+  geom_text(
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -2,     
+    show.legend = FALSE,
+    color = "black")  +
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "inside",
+        legend.position.inside = c(0.06,0.25),
+        legend.background = element_rect(color = "black", linewidth = 0.25))
+
+complexity_over_time
+
+# ggsave(complexity_over_time,
+#        filename = "output/complexity_over_time_facet.jpg",
+#        height = 6,
+#        width = 7.5,
+#        units = "in",
+#        dpi = 300)
+
+# Sin x time facet wrap
+sinuosity_over_time <- data_byyr %>%
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = sinuosity, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name,
+             nrow = 1) +# Remove if want one plot per metric
+  scale_color_manual(values = wood_colors,
+          name = "Reach type",
+          labels = c("Wood rich", "Wood poor")) +
+  labs(y = "Sinuosity") + 
+    theme_bw() +
+  geom_text(
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -2,     
+    show.legend = FALSE,
+    color = "black") +
+    theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        legend.position = "none")
+
+# ggsave(sinuosity_over_time,
+#        filename = "output/sinuosity_over_time_facet.jpg",
+#        height = 6,
+#        width = 7.5,
+#        units = "in",
+#        dpi = 300)
+
+
+# Channel area
+
+# Need some way to show net change over time... because its a year-to year thing..
+# Could show channel area normalized by channel length each year?
+
+ch_area_over_time <- data_byyr %>%
+  mutate(ch_area_norm = channel_area/channel_length) %>%
+  group_by(ab) %>%
+  ggplot(aes(x = year, y = channel_area, color = reach)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = site_reach)) +
+  facet_wrap(~name,
+             nrow = 1) + # Remove if want one plot per metric
+  scale_color_manual(values = wood_colors,
+          name = "Reach type",
+          labels = c("Wood rich", "Wood poor")) +
+  labs(x = "Year",
+       y = expression(paste("Channel area (", m^{2}, ")"))) + 
+  theme(legend.position = "right") +
+    theme_bw() +
+  geom_text(
+    data = data_byyr %>% 
+      slice_min(order_by = year, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -2,     
+    show.legend = FALSE,
+    color = "black") +
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        )
+
+# ggsave(ch_area_over_time,
+#        filename = "output/ch_area_over_time_facet.jpg",
+#        height = 6,
+#        width = 7.5,
+#        units = "in",
+#        dpi = 300)
+
+## Facet wrap grid
+
+metric_grid <- (complexity_over_time / sinuosity_over_time / ch_area_over_time)
+
+ggsave(metric_grid,
+       filename = "output/metric_grid.jpg",
+       height = 7,
+       width = 12,
+       units = "in",
+       dpi = 300)
+```
+
+
+# Mega ch metrics panel
+
+```{r simple dynamism plots PART 2 MEGA PANEL}
+##### Sinuosity vs both mean wood metrics #####
+p1 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = sinuosity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "Sinuosity",
+       color = "Site",
+       shape = "Reach Type")
+
+p2 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = sinuosity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+sinuosity <- (p1 + p2) +
+  plot_annotation(title = "Sinuosity Dynamism vs. Avg Wood Metrics")
+##### end 
+
+##### Complexity vs both mean wood metrics #####
+p3 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = complexity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "Complexity",
+       color = "Site",
+       shape = "Reach Type")
+
+p4 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = complexity_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "right") +
+  labs(x = "", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+complexity <- (p3 + p4) +
+  plot_annotation(title = "Complexity Dynamism vs. Avg Wood Metrics")
+##### end
+
+##### SDI vs both mean wood metrics #####
+p5 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = sdi_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "SDI",
+       color = "Site",
+       shape = "Reach Type")
+
+p6 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = sdi_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(x = "", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+sdi <- (p5 + p6) +
+  plot_annotation(title = "SDI Dynamism vs. Avg Wood Metrics")
+##### end
+
+##### Net change vs both mean wood metrics #####
+p7 <- dynamism_data %>%
+  ggplot(aes(x = avg_wood_pieces_per100m, y = net_change_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+      values = c(16, 17),
+      labels = c("Large Wood", "Control"),
+      name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Pieces per 100m", 
+       y = "Net Change",
+       color = "Site",
+       shape = "Reach Type")
+
+p8 <- dynamism_data %>%
+  ggplot(aes(x = mean_wood_accum_per_area, y = net_change_dynamism, color = site)) +
+  geom_point(aes(shape = reach), size = 3) +
+    scale_color_carto_d(palette = "Earth") +
+    scale_shape_manual(
+    values = c(16, 17),
+    labels = c("Large Wood", "Control"),
+    name = "Reach Type") +
+  geom_line(aes(group = site), color = "black", alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(x = "Avg. Wood Acculumations per Area", 
+       y = "",
+       color = "Site",
+       shape = "Reach Type")
+
+netdyno <- (p7 + p8) +
+  plot_annotation(title = "Net Change vs. Avg Wood Metrics")
+
+
+# Patching together
+(p1 + p2 +
+ p3 + p4 +
+ p5 + p6 +
+ p7 + p8) +
+  plot_layout(ncol = 2) +
+  plot_annotation(title = "Dynamism vs. Avg Wood Metrics")
+##### end
+
+```
+
+#Mega z-score panel
+
+```{r simple dynamism plots pt. 2}
+library(grid)
+library(rcartocolor)
+library(dplyr)
+library(patchwork)
+
+## CLEANING UP
+# Adjusting so all 3 metrics can be plotted on same graph
+
+dynamism_cubed <- dynamism_data %>%
+  pivot_longer(c(complexity_dynamism,sinuosity_dynamism, net_change_dynamism),
+               names_to = "Metric",
+               values_to = "Value") %>%
+  group_by(Metric) %>%
+  mutate(Value_scaled = (scale(Value))) # calculated a separate z-score for each dynamism metric
+  # will show dynamism values relative to each other
+
+# Essentially, does wood accumulation change dynamism relative to it's normal range?
+
+# Looking at colorblind friendly color schemes
+#rcartocolor::display_carto_all()
+#carto_pal(7, "Earth")
+
+# Renaming labels
+dynamism_cubed <- dynamism_cubed %>%
+  mutate(
+    Metric = recode(
+      Metric,
+      complexity_dynamism = "Complexity",
+      sinuosity_dynamism = "Sinuosity",
+      net_change_dynamism = "Net Channel Change"
+    ),
+    reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor"
+    ))
+    
+
+## PLOTS
+
+## COMBO PLOT
+# Mean wood pieces across site and reach
+z_pieces <- dynamism_cubed %>% ggplot(aes(
+    x = avg_wood_pieces_per100m,
+    y = Value_scaled,
+    color = Metric
+    )) +
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = name),
+    size = 4)+
+  scale_shape_manual(values = c(3,4,18,16,17,15)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  geom_text(
+    data = dynamism_cubed,
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = -0.005,     
+    show.legend = FALSE,
+    color = "black",
+    size = 3,
+    fontface = "bold") +
+  facet_wrap(~reach) +
+    facet_wrap(~reach ) + # delete scale = "free_x" if you want each reach on the same scale
+    labs(
+    x = "Mean wood pieces (per 100m)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  xlim(0, NA) +
+  theme_bw() +
+  theme(panel.spacing.x = unit(0.5, "cm"))
+
+# Mean wood accumulation across site and reach
+z_acc <- ggplot(
+  dynamism_cubed,
+  aes(
+    x = mean_wood_accum_per_area,
+    y = Value_scaled,
+    color = Metric
+  )
+) +
+  scale_color_manual(values = c(
+  "Complexity" = "#B5B991",
+  "Sinuosity" = "#70A494",
+  "Net Channel Change" = "#E15759"
+  ))+
+ geom_point(
+    aes(shape = name),
+    size = 4)+
+  scale_shape_manual(values = c(3,4,18,16,17,15)) +
+  geom_smooth(aes(group = Metric),
+              method = "lm",
+              se = FALSE,
+              linewidth = 1.2) +
+  geom_text(
+    aes(label = ab),
+    hjust = 0,
+    nudge_x = -0.005,
+    show.legend = FALSE,
+    color = "black",
+    size = 3,
+    fontface = "bold") +
+    facet_wrap(~reach) + # delete scale = "free_x" if you want on the same scale
+    labs(
+    x = "Mean wood accumulation (per area)",
+    y = "Standardized dynamism (z-score)",
+    color = "Dynamism Metric",
+    shape = "Site")+
+  scale_x_continuous(expand = c(0,0.01),
+                     limits = c(0,NA)) +
+  theme_bw()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.spacing.x = unit(0.5, "cm")
+  )
+
+
+## FINAL PLOT
+z_score_plot <- (z_pieces + z_acc) +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = "Dynamism vs. Average Wood Metrics") &
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right",
+    legend.title = element_text(face = "bold"),
+    legend.key.size = unit(0.4, "cm"),
+    legend.spacing.x = unit(0.2, "cm"),
+    legend.text = element_text(size = 9),
+    legend.box.spacing = unit(0.1, "cm"),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  ) &
+  guides(
+    color = guide_legend(
+      title = "Dynamism Metric",
+      ncol = 1
+    ),
+    shape = guide_legend(
+      title = "Site",
+      ncol = 1,
+      override.aes = list(size = 3)
+    )
+  )
+
+ggsave(z_score_plot,
+       filename = "output/z_score_plot.jpg",
+       height = 5,
+       width = 9,
+       units = "in",
+       dpi = 300)
+
+```
+
+### Loose dynamism for results text - 
+##Paired dynamism Boxplot
+
+```{r}
+sin_dyn_boxplot <- dynamism_data %>%
+mutate(reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor")) %>%
+  ggplot(aes(x = reach, y = sinuosity_dynamism)) +
+  geom_boxplot() +
+  geom_point()+
+  geom_line(aes(group = name, color = name), linewidth = 1) +
+  scale_color_manual(values = name_colors) +
+  labs(y = "Sinuosity dynamism/year") +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank())
+
+complex_dyn_boxplot <- dynamism_data %>%
+mutate(reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor")) %>%
+  ggplot(aes(x = reach, y = complexity_dynamism)) +
+  geom_boxplot() +
+  geom_point()+
+  geom_line(aes(group = name, color = name), linewidth = 1) +
+  scale_color_manual(values = name_colors, name  = "Site") +
+  labs(y = "Complexity dynamism/year") +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank())
+complex_dyn_boxplot
+
+net_dyn_boxplot <- dynamism_data %>%
+mutate(reach = recode(
+      reach,
+      LW_Channel = "Wood rich",
+      no_LW_Channel = "Wood poor")) %>%
+  ggplot(aes(x = reach, y = net_change_dynamism)) +
+  geom_boxplot() +
+  geom_point()+
+  geom_line(aes(group = name, color = name), linewidth = 1) +
+  theme_bw() +
+  scale_color_manual(values = name_colors) +
+  labs(y = "Net change dynamism/year",
+       x = "Reach type") +
+  theme(legend.position = "none")
+
+paired_dyn_boxplot <- (sin_dyn_boxplot / complex_dyn_boxplot / net_dyn_boxplot)
+
+paired_dyn_boxplot
+
+ggsave(paired_dyn_boxplot,
+       filename = "output/paired_dyn_boxplot.jpg",
+       height = 7,
+       width = 7,
+       units = "in",
+       dpi = 300)
+```
+## model results figures
+
+candidate models were specified in wood_dynamism.Rmd and saved to the candidate_models.rds file in figures_data/ 
+```{r load candidate models}
+mod_data_byyr <- readRDS("./data/figures_data/model_data_byyr.rds")
+models <- readRDS("./data/figures_data/candidate_models.rds")
+```
+
+AICc table info
+```{r model selection}
+# m1 is the top model for sinuosity
+AICcmodavg::aictab(models$sinuosity)
+# m2 is the top model for complexity 
+AICcmodavg::aictab(models$complexity)
+```
+model summary info for each top model
+```{r top model summary for each resposne}
+# look at the top model summaries
+## these estimates are on the log scale
+summary(models$sinuosity$m1)
+summary(models$complexity$m2)
+```
+
+## obtain estimates on original response scale
+```{r top model estimates}
+# for the sinuosity model, the intercept is the global mean sinuosity (across all sites)
+# and the ratio effect is the effect of 1 sd increase in wood accumulation on sinuosity 
+# both of these are on the log scale
+sinuosity.m1.intercept <- summary(models$sinuosity$m1)$coefficients["(Intercept)", "Estimate"]
+sinuosity.m1.ratio.effect <- summary(models$sinuosity$m1)$coefficients["ratio_accum_scaled", "Estimate"]
+
+# estimates on original response scale
+# the gloabl mean sinuosity is 2.545686
+exp(sinuosity.m1.intercept)
+
+# ratio effect is still standardized 
+# i.e. for every 1 sd increase in ratio of wood accum there is a 1.163508 increase in sinuosity
+exp(sinuosity.m1.ratio.effect)
+
+# confidence intervals for each estimate on the original scale
+# these are still interpreted as per 1sd increase in ratio of accum
+exp(confint(models$sinuosity$m1, parm = "beta_", method = "Wald"))
+
+
+# for the complexity model, the intercept is the global mean complexity (across all sites)
+# and the ratio effect is the effect of 1 sd increase in wood accumulation on complexity 
+# both of these are on the log scale
+complexity.m2.intercept <- summary(models$complexity$m2)$coefficients["(Intercept)", "Estimate"]
+complexity.m2.ratio.effect <- summary(models$complexity$m2)$coefficients["ratio_accum_scaled", "Estimate"]
+
+
+# estimates on original response scale
+# the gloabl mean complexity is 1.8377
+exp(complexity.m2.intercept)
+
+# ratio effect is still standardized 
+# i.e. for every 1 sd increase in ratio of wood accum there is a 0.9920911 increase in complexity 
+exp(complexity.m2.ratio.effect)
+
+# confidence intervals for each estimate on the original scale
+# these are still interpreted as per 1sd increase in ratio of accum
+exp(confint(models$complexity$m1, parm = "beta_", method = "Wald"))
+
+```
+generate predictions based on model
+
+```{r generate model predictions}
+x_mean <- as.numeric(attr(mod_data_byyr$ratio_accum_scaled, "scaled:center"))
+x_sd   <- as.numeric(attr(mod_data_byyr$ratio_accum_scaled, "scaled:scale"))
+
+# create a df with new x values from which to predict repsponse values 
+# this creates 100 new values only between the min and max observed values within a site 
+pred_grid <- mod_data_byyr %>%
+  group_by(site) %>%
+  summarise(
+    x_min = min(ratio_accum_to_ch_area),
+    x_max = max(ratio_accum_to_ch_area)
+  ) %>%
+  rowwise() %>%
+  mutate(
+    pred.x = list(
+      seq(x_min, x_max, length.out = 100) # gives 100 values between min and max observed x values for each site
+    )
+  ) %>%
+  unnest(pred.x) %>% # expands them from the list column 
+  mutate(
+    ratio_accum_scaled = (pred.x - x_mean) / x_sd # scales the 100 values using the same mean and sd from model scaling
+  )
+
+# create predicted values for sinuosity and complexity based on new x values
+p.sin <- predict(
+  models$sinuosity$m1, # top sinuosity model
+  newdata = pred_grid,
+  re.form = NULL,
+  type = "link", # get values on model scale, needed for calculating 95% CIs
+  se.fit = TRUE
+)
+
+p.comp <- predict(
+  models$complexity$m2, # top complexity model
+  newdata = pred_grid,
+  re.form = NULL,
+  type = "link", # get values on model scale, needed for calculating 95% CIs
+  se.fit = TRUE
+)
+
+# transform predictions and calculate transformed 95% CIs 
+pred_grid <- pred_grid %>%
+  mutate(
+    # Sinuosity
+    pred.sinuosity = exp(p.sin$fit), # exp transforms us back to the original response scale 
+    sinuosity.lower = exp(p.sin$fit - 1.96 * p.sin$se.fit),
+    sinuosity.upper = exp(p.sin$fit + 1.96 * p.sin$se.fit),
+
+    # Complexity
+    pred.complexity = exp(p.comp$fit),
+    complexity.lower = exp(p.comp$fit - 1.96 * p.comp$se.fit),
+    complexity.upper = exp(p.comp$fit + 1.96 * p.comp$se.fit)
+  ) %>% 
+  # add names for plotting
+  mutate(name = case_when(
+    site == "Indian" ~ "Indian Creek",
+    site == "Snoqualmie"  ~ "Lower Middle Fork Snoqualmie",
+    site == "Nyack" ~ "Nyack Creek", 
+    site == "Rock_WY" ~ "Rock Creek", 
+    site == "Skunk" ~ "Skunk Creek",
+    site == "Rock_WA" ~ "Upper Middle Fork Snoqualmie"
+  ),
+  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek",
+                                 "Skunk Creek", "Upper Middle Fork Snoqualmie", "Lower Middle Fork Snoqualmie"))
+  ) 
+
+mod_data_byyr <- mod_data_byyr %>% 
+  # add names for plotting
+  mutate(name = case_when(
+    site == "Indian" ~ "Indian Creek",
+    site == "Snoqualmie"  ~ "Lower Middle Fork Snoqualmie",
+    site == "Nyack" ~ "Nyack Creek", 
+    site == "Rock_WY" ~ "Rock Creek", 
+    site == "Skunk" ~ "Skunk Creek",
+    site == "Rock_WA" ~ "Upper Middle Fork Snoqualmie"
+  ),
+  name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek",
+                                 "Skunk Creek", "Upper Middle Fork Snoqualmie", "Lower Middle Fork Snoqualmie"))
+  ) 
+```
+
+```{r plot predictions}
+plot.complexity <- ggplot() +
+  # add observed values 
+  geom_point(data = mod_data_byyr,
+             aes(x = ratio_accum_to_ch_area, y = complexity,
+               color = name), alpha = 1, size = 1) +
+  # add predicted lines
+  geom_line(data = pred_grid,
+            aes(x = pred.x, y = pred.complexity,
+                color = name), linewidth = 0.5) +
+  # add predicted 95% CIs
+  geom_ribbon(data = pred_grid,
+              aes(x = pred.x, ymin = complexity.lower, ymax = complexity.upper, 
+                  fill = name), alpha = 0.2, color = NA) +
+  scale_color_manual(values = name_colors) +
+  scale_fill_manual(values = name_colors) +
+  labs(x = expression(paste("Wood accumulation area (", m^{2}, ") / channel area (", m^{2}, ")")),
+       y = "Complexity",
+       color = "Site",
+       fill = "Site"
+  ) +
+  theme(text = element_text(size = 12))
+# +
+#   facet_wrap(~name)
+
+
+plot.sinuosity <- ggplot() +
+  # add observed values 
+  geom_point(data = mod_data_byyr,
+             aes(x = ratio_accum_to_ch_area, y = sinuosity,
+               color = name), alpha = 1, size = 1) +
+  # add predicted lines
+  geom_line(data = pred_grid,
+            aes(x = pred.x, y = pred.sinuosity,
+                color = name), linewidth = 0.5) +
+  # add predicted 95% CIs
+  geom_ribbon(data = pred_grid,
+              aes(x = pred.x, ymin = sinuosity.lower, ymax = sinuosity.upper, 
+                  fill = name), alpha = 0.2, color = NA) +
+  scale_color_manual(values = name_colors) +
+  scale_fill_manual(values = name_colors) +
+  labs(x = expression(paste("Wood accumulation area (", m^{2}, ") / channel area (", m^{2}, ")")),
+       y = "Sinuosity",
+       color = "Site",
+       fill = "Site"
+  ) +
+  theme(text = element_text(size = 12))
+# +
+#   facet_wrap(~name)
+
+
+pred_plot_final <- (plot.complexity / plot.sinuosity) +
+  plot_layout(guides = "collect",
+              axes = "collect")
+
+ggsave(pred_plot_final,
+       filename = "output/model_prediction_plot.jpg",
+       height = 6.5,
+       width = 7.5,
+       units = "in",
+       dpi = 300)
+```
+
+
+##Supplemental
+
+### Acc & Pieces over time
+```{r}
+
+
+# how does standardized wood (the ratio of wood accumulation to channel area and num of pieces per 100 m of channel) change over time?
+
+# Make sequential color palette
+
+# reso_palette <- c("#6B0077", "#7663A2","#90A7CC","#A5C3DB","#C0DCE8")
+# 
+# reso_palette <- c("#A93154", "#BB4E93","#BC71BB","#B39AD8","#AEB6E5")
+# 
+# reso_palette <- c("#255668", "#00777B","#08A47F","#94D268","#EDEF5C")
+
+reso_palette <- c("#4B1D91", "#B91D9B","#ED567D","#F38C61","#F7BF4B")
+
+# Join naip metrics to data_byyr
+  # Create join attribute
+
+naip_metrics <- naip_metrics %>%
+  rename(reach = site,
+         site = river) %>%
+  mutate(site_reach_year = paste0(site,reach,year))  %>%
+  mutate(spatial_resolution_m = as.factor(spatial_resolution_m))
+
+data_byyr <- data_byyr %>%
+  mutate(site_reach_year = paste0(site,reach,year)) 
+  
+
+# Join
+data_byyr <- data_byyr %>%
+  left_join(naip_metrics, by = join_by(site_reach_year))
+
+p1 <- data_byyr %>% 
+  drop_na(spatial_resolution_m) %>%
+  mutate(spatial_resolution_m = as.factor(spatial_resolution_m),
+         spatial_resolution_m = factor(spatial_resolution_m, levels = c("2", "1", "0.6", "0.5", "0.3"))) %>%
+  ggplot(aes(x=year.y, y=piece_per_100m)) +
+  geom_line(aes(linetype = reach.y, group = site_reach)) +
+  geom_point(aes(shape = name, color = spatial_resolution_m)) +
+  theme_bw() +
+  labs(x = "Year",
+       y = "# of pieces/100 m") +
+  geom_text(
+    data = data_byyr %>% 
+      slice_max(order_by = year.y, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = 0.2,     
+    show.legend = FALSE) +
+  scale_color_manual(values = reso_palette, name = "Image resolution (m)") +
+  scale_shape_discrete(name = "Site") +
+  scale_linetype_discrete(
+    name = "Reach type",
+    labels = c("Wood rich", "Wood poor")) + # LW is alphabetically before no_LW 
+  theme(axis.text = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+# General trend of pieces increasing over time, this is likely an artifact of the imagery resolution improving. Definitely include this in the SI. This is not true for accumulations.
+
+p1
+
+p2 <- data_byyr %>% 
+  drop_na(spatial_resolution_m) %>%
+  mutate(spatial_resolution_m = factor(spatial_resolution_m, levels = c("2", "1", "0.6", "0.5", "0.3"))) %>%
+  ggplot(aes(x=year.y, y=ratio_accum_to_ch_area)) +
+  geom_line(aes(linetype = reach.y, group = site_reach)) +
+  geom_point(aes(shape = name, color = spatial_resolution_m)) +
+  theme_bw() +
+  labs(x = "Year",
+       y = "Wood accumulation area/channel area") +
+  geom_text(
+    data = data_byyr %>% 
+      slice_max(order_by = year.y, n = 1, by = ab), # first point
+    aes(label = ab),
+    hjust = 0,        
+    nudge_x = 0.2,     
+    show.legend = FALSE) +
+  scale_linetype_discrete(
+    name = "Reach type",
+    labels = c("Wood rich", "Wood poor")) + # LW is alphabetically before no_LW 
+  scale_color_manual(values = reso_palette) +
+  scale_color_manual(values = reso_palette, name = "Image resolution (m)") +
+  scale_shape_discrete(name = "Site") +
+  scale_linetype_discrete(
+    name = "Reach type",
+    labels = c("Wood rich", "Wood poor"))  # LW is alphabetically before no_LW 
+p2
+
+wood_time_si <- (p1/p2)
+
+ggsave(wood_time_si,
+       filename = "output/wood_time_si.jpg",
+       dpi = 300,
+       width = 7,
+       height = 8,
+       units = "in")
+```
