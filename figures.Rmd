@@ -50,8 +50,8 @@ naip_metrics <- read_csv("data/figures_data/NAIP_metadata.csv") %>%
 #     ) 
 
 data_byyr <- data_byyr %>% 
-  rename(reach = site,
-         site = river) %>%
+  # rename(reach = site,
+  #        site = river) %>%
   mutate(site_reach = paste0(site,reach,ab)) %>% 
   mutate(ratio_accum_to_ch_area = accum_area/channel_area,
          piece_per_100m = (wood_pieces/channel_length)*100,
@@ -546,11 +546,6 @@ netdyno <- (p7 + p8) +
 #Mega z-score panel
 
 ```{r simple dynamism plots pt. 2}
-library(grid)
-library(rcartocolor)
-library(dplyr)
-library(patchwork)
-
 ## CLEANING UP
 # Adjusting so all 3 metrics can be plotted on same graph
 
@@ -671,7 +666,6 @@ z_acc <- ggplot(
     axis.ticks.y = element_blank(),
     panel.spacing.x = unit(0.5, "cm")
   )
-
 
 ## FINAL PLOT
 z_score_plot <- (z_pieces + z_acc) +

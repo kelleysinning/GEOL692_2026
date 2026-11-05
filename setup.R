@@ -26,6 +26,7 @@ packages <- c('tidyverse',
               'ggeffects',
               'sjPlot',
               'rcartocolor',
-              'grid')
+              'grid'
+              )
 # use the packageLoad function we created on those packages
 packageLoad(packages)
