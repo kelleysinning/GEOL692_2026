@@ -33,21 +33,7 @@ naip_metrics <- read_csv("data/figures_data/NAIP_metadata.csv") %>%
   ),
   name = factor(name, levels = c("Indian Creek", "Nyack Creek", "Rock Creek",
                                  "Skunk Creek", "Lower Middle Fork Snoqualmie", "Upper Middle Fork Snoqualmie"))
-  ) 
-```
-
-```{r clean loaded data}
-## this should work after you run the right version of data loading above
-
-# dynamism_data <- dynamism_data[1:13,] %>% # for some reason we have duplicate rows in the csv
-#   bind_rows( # also want to add back the mod rock_WA site
-#     dynamism_data %>% 
-#       slice(6) %>% 
-#       mutate(across(
-#         c(site_reach, site),
-#         ~ str_replace_all(.x, "_1", "_2")
-#         ))
-#     ) 
+  )
 
 data_byyr <- data_byyr %>% 
   # rename(reach = site,
@@ -87,7 +73,7 @@ name_colors = c("Indian Creek" = "#96765C",
                 "Lower Middle Fork Snoqualmie" ="#86AFC4")
 ```
 
-# Mean + facet wrap wood bar plot
+# Fig 5 Mean + facet wrap wood bar plot
 
 ```{r}
 
@@ -250,7 +236,7 @@ data_byyr %>%
 
 
 
-## Ch metrics x time facet wrap
+# Fig 6 Ch metrics x time facet wrap
 
 ```{r}
 # Complexity
@@ -265,7 +251,7 @@ complexity_over_time <- data_byyr %>%
   scale_color_manual(values = wood_colors,
           name = "Reach type",
           labels = c("Wood rich", "Wood poor")) +
-  labs(y = "Complexity (m/m)") + 
+  labs(y = "Shoreline complexity") + 
     theme_bw() +
   geom_text(
     data = data_byyr %>% 
@@ -381,7 +367,7 @@ ggsave(metric_grid,
 ```
 
 
-# Mega ch metrics panel
+## Mega ch metrics panel
 
 ```{r simple dynamism plots PART 2 MEGA PANEL}
 ##### Sinuosity vs both mean wood metrics #####
@@ -434,7 +420,7 @@ p3 <- dynamism_data %>%
   theme_bw() + 
   theme(legend.position = "none") +
   labs(x = "", 
-       y = "Complexity",
+       y = "Shoreline Complexity",
        color = "Site",
        shape = "Reach Type")
 
@@ -455,7 +441,7 @@ p4 <- dynamism_data %>%
        shape = "Reach Type")
 
 complexity <- (p3 + p4) +
-  plot_annotation(title = "Complexity Dynamism vs. Avg Wood Metrics")
+  plot_annotation(title = "Shoreline Complexity Dynamism vs. Avg Wood Metrics")
 ##### end
 
 ##### SDI vs both mean wood metrics #####
@@ -543,7 +529,7 @@ netdyno <- (p7 + p8) +
 
 ```
 
-#Mega z-score panel
+#Fig 8 Mega z-score panel
 
 ```{r simple dynamism plots pt. 2}
 ## CLEANING UP
@@ -568,7 +554,7 @@ dynamism_cubed <- dynamism_cubed %>%
   mutate(
     Metric = recode(
       Metric,
-      complexity_dynamism = "Complexity",
+      complexity_dynamism = "Shoreline complexity",
       sinuosity_dynamism = "Sinuosity",
       net_change_dynamism = "Net Channel Change"
     ),
@@ -589,7 +575,7 @@ z_pieces <- dynamism_cubed %>% ggplot(aes(
     color = Metric
     )) +
   scale_color_manual(values = c(
-  "Complexity" = "#B5B991",
+  "Shoreline complexity" = "#B5B991",
   "Sinuosity" = "#70A494",
   "Net Channel Change" = "#E15759"
   ))+
@@ -613,7 +599,7 @@ z_pieces <- dynamism_cubed %>% ggplot(aes(
   facet_wrap(~reach) +
     facet_wrap(~reach ) + # delete scale = "free_x" if you want each reach on the same scale
     labs(
-    x = "Mean wood pieces (per 100m)",
+    x = "Mean number of pieces / 100 m",
     y = "Standardized dynamism (z-score)",
     color = "Dynamism Metric",
     shape = "Site")+
@@ -631,7 +617,7 @@ z_acc <- ggplot(
   )
 ) +
   scale_color_manual(values = c(
-  "Complexity" = "#B5B991",
+  "Shoreline complexity" = "#B5B991",
   "Sinuosity" = "#70A494",
   "Net Channel Change" = "#E15759"
   ))+
@@ -653,7 +639,7 @@ z_acc <- ggplot(
     fontface = "bold") +
     facet_wrap(~reach) + # delete scale = "free_x" if you want on the same scale
     labs(
-    x = "Mean wood accumulation (per area)",
+    x = expression(paste("Mean wood accumulation area (", m^{2}, ") / channel area (", m^{2}, ")")),
     y = "Standardized dynamism (z-score)",
     color = "Dynamism Metric",
     shape = "Site")+
@@ -704,9 +690,7 @@ ggsave(z_score_plot,
        dpi = 300)
 
 ```
-
-### Loose dynamism for results text - 
-##Paired dynamism Boxplot
+# Fig SI x Paired dynamism Boxplot
 
 ```{r}
 sin_dyn_boxplot <- dynamism_data %>%
@@ -735,7 +719,7 @@ mutate(reach = recode(
   geom_point()+
   geom_line(aes(group = name, color = name), linewidth = 1) +
   scale_color_manual(values = name_colors, name  = "Site") +
-  labs(y = "Complexity dynamism/year") +
+  labs(y = "Shoreline complexity dynamism/year") +
   theme_bw() +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_blank())
@@ -762,18 +746,19 @@ paired_dyn_boxplot
 
 ggsave(paired_dyn_boxplot,
        filename = "output/paired_dyn_boxplot.jpg",
-       height = 7,
+       height = 8,
        width = 7,
        units = "in",
        dpi = 300)
 
+# Summary stats for text
 dynamism_data %>%
   group_by(reach) %>%
   summarize(median_sin = median(sinuosity_dynamism),
             median_complex = median(complexity_dynamism),
             median_net_ch = median(net_change_dynamism))
 ```
-## model results figures
+# Fig 7 model results figures
 
 candidate models were specified in wood_dynamism.Rmd and saved to the candidate_models.rds file in figures_data/ 
 ```{r load candidate models}
@@ -937,11 +922,12 @@ plot.complexity <- ggplot() +
   scale_color_manual(values = name_colors) +
   scale_fill_manual(values = name_colors) +
   labs(x = expression(paste("Wood accumulation area (", m^{2}, ") / channel area (", m^{2}, ")")),
-       y = "Complexity",
+       y = "Shoreline complexity (m/m)",
        color = "Site",
        fill = "Site"
   ) +
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12)) +
+  theme_bw()
 # +
 #   facet_wrap(~name)
 
@@ -966,7 +952,8 @@ plot.sinuosity <- ggplot() +
        color = "Site",
        fill = "Site"
   ) +
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12)) +
+  theme_bw()
 # +
 #   facet_wrap(~name)
 
@@ -984,9 +971,8 @@ ggsave(pred_plot_final,
 ```
 
 
-##Supplemental
 
-### Acc & Pieces over time
+# Fig 3 Acc & Pieces over time
 ```{r}
 
 
