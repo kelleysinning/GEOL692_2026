@@ -673,7 +673,7 @@ z_score_plot <- (z_pieces + z_acc) +
   ) &
   guides(
     color = guide_legend(
-      title = "Dynamism Metric",
+      title = "Channel Metric",
       ncol = 1
     ),
     shape = guide_legend(
