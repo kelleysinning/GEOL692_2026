@@ -625,10 +625,11 @@ z_acc <- ggplot(
     aes(shape = name),
     size = 4)+
   scale_shape_manual(values = c(3,4,18,16,17,15)) +
-  geom_smooth(aes(group = Metric),
-              method = "lm",
-              se = FALSE,
-              linewidth = 1.2) +
+  geom_smooth(  data = ~ subset(.x, reach == "Wood rich"),
+  aes(group = Metric),
+  method = "lm",
+  se = FALSE,
+  linewidth = 1.2) +
   geom_text(
     aes(label = ab),
     hjust = 0,
@@ -690,7 +691,7 @@ ggsave(z_score_plot,
        dpi = 300)
 
 ```
-# Fig SI x Paired dynamism Boxplot
+# Fig 7 x Paired dynamism Boxplot
 
 ```{r}
 sin_dyn_boxplot <- dynamism_data %>%
@@ -700,10 +701,10 @@ mutate(reach = recode(
       no_LW_Channel = "Wood poor")) %>%
   ggplot(aes(x = reach, y = sinuosity_dynamism)) +
   geom_boxplot() +
-  geom_point()+
+  geom_point(aes(group = name, color = name))+
   geom_line(aes(group = name, color = name), linewidth = 1) +
   scale_color_manual(values = name_colors) +
-  labs(y = "Sinuosity dynamism/year") +
+  labs(y = str_wrap("Sinuosity dynamism (/yr)", width  = 18)) +
   theme_bw() +
   theme(legend.position = "none",
         axis.title.x = element_blank(),
@@ -716,10 +717,10 @@ mutate(reach = recode(
       no_LW_Channel = "Wood poor")) %>%
   ggplot(aes(x = reach, y = complexity_dynamism)) +
   geom_boxplot() +
-  geom_point()+
+  geom_point(aes(group = name, color = name))+
   geom_line(aes(group = name, color = name), linewidth = 1) +
   scale_color_manual(values = name_colors, name  = "Site") +
-  labs(y = "Shoreline complexity dynamism/year") +
+  labs(y = str_wrap("Shoreline complexity dynamism (/yr)", width = 18)) +
   theme_bw() +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_blank())
@@ -732,11 +733,11 @@ mutate(reach = recode(
       no_LW_Channel = "Wood poor")) %>%
   ggplot(aes(x = reach, y = net_change_dynamism)) +
   geom_boxplot() +
-  geom_point()+
+  geom_point(aes(group = name, color = name))+
   geom_line(aes(group = name, color = name), linewidth = 1) +
   theme_bw() +
   scale_color_manual(values = name_colors) +
-  labs(y = "Net change dynamism/year",
+  labs(y = expression(atop("Net change dynamism", "(" * m^{2} * "/yr)")),
        x = "Reach type") +
   theme(legend.position = "none")
 
@@ -746,8 +747,8 @@ paired_dyn_boxplot
 
 ggsave(paired_dyn_boxplot,
        filename = "output/paired_dyn_boxplot.jpg",
-       height = 8,
-       width = 7,
+       height = 6,
+       width = 5.5,
        units = "in",
        dpi = 300)
 
@@ -758,7 +759,7 @@ dynamism_data %>%
             median_complex = median(complexity_dynamism),
             median_net_ch = median(net_change_dynamism))
 ```
-# Fig 7 model results figures
+# SI Fig 14 model results figures
 
 candidate models were specified in wood_dynamism.Rmd and saved to the candidate_models.rds file in figures_data/ 
 ```{r load candidate models}
