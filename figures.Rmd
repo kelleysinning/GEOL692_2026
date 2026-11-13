@@ -729,6 +729,9 @@ mutate(reach = recode(
                aes(x = "Wood rich", xend = "Wood poor",
                    y = rich_sin, yend = poor_sin, color = name),
                linewidth = 1) +
+  geom_text(aes(label = ab),
+            position = position_dodge2(width = 0.3),
+            hjust = -0.7) +
   scale_color_manual(values = name_colors) +
   labs(y = str_wrap("Sinuosity dynamism (/yr)", width  = 18)) +
   theme_bw() +
@@ -748,6 +751,9 @@ mutate(reach = recode(
                aes(x = "Wood rich", xend = "Wood poor",
                    y = rich_complex, yend = poor_complex, color = name),
                linewidth = 1) +
+    geom_text(aes(label = ab),
+            position = position_dodge2(width = 0.3),
+            hjust = -0.7) +
   scale_color_manual(values = name_colors, name  = "Site") +
   labs(y = str_wrap("Shoreline complexity dynamism (/yr)", width = 18)) +
   theme_bw() +
@@ -767,6 +773,13 @@ mutate(reach = recode(
                aes(x = "Wood rich", xend = "Wood poor",
                    y = rich_net_change, yend = poor_net_change, color = name),
                linewidth = 1) +
+  geom_text_repel(aes(label = ab),
+                  direction = "y",        # only move labels up/down
+                  nudge_x = 0.1,          # start labels to the right of the points
+                  hjust = 0,
+                  box.padding = 0.2,      # minimum vertical space between labels
+                  segment.color = NA,
+                  seed = 1) +
   theme_bw() +
   scale_color_manual(values = name_colors) +
   labs(y = expression(atop("Net change dynamism", "(" * m^{2} * "/yr)")),
