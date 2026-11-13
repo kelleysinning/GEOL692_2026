@@ -694,6 +694,29 @@ ggsave(z_score_plot,
 # Fig 7 x Paired dynamism Boxplot
 
 ```{r}
+plot_data <- dynamism_data %>%
+  mutate(reach = recode(reach,
+                        LW_Channel = "Wood rich",
+                        no_LW_Channel = "Wood poor"),
+         reach = factor(reach, levels = c("Wood rich", "Wood poor")))
+
+line_data <- plot_data %>%
+  filter(reach == "Wood rich") %>%
+  dplyr::select(name,
+         rich_sin   = sinuosity_dynamism,
+         rich_complex = complexity_dynamism,
+         rich_net_change = net_change_dynamism) %>%
+  inner_join(
+    plot_data %>%
+      filter(reach == "Wood poor") %>%
+      dplyr::select(name,
+             poor_sin   = sinuosity_dynamism,
+             poor_complex = complexity_dynamism,
+             poor_net_change = net_change_dynamism),
+    by = "name",
+    relationship = "many-to-many"
+  )
+
 sin_dyn_boxplot <- dynamism_data %>%
 mutate(reach = recode(
       reach,
@@ -702,7 +725,10 @@ mutate(reach = recode(
   ggplot(aes(x = reach, y = sinuosity_dynamism)) +
   geom_boxplot() +
   geom_point(aes(group = name, color = name))+
-  geom_line(aes(group = name, color = name), linewidth = 1) +
+  geom_segment(data = line_data,
+               aes(x = "Wood rich", xend = "Wood poor",
+                   y = rich_sin, yend = poor_sin, color = name),
+               linewidth = 1) +
   scale_color_manual(values = name_colors) +
   labs(y = str_wrap("Sinuosity dynamism (/yr)", width  = 18)) +
   theme_bw() +
@@ -718,7 +744,10 @@ mutate(reach = recode(
   ggplot(aes(x = reach, y = complexity_dynamism)) +
   geom_boxplot() +
   geom_point(aes(group = name, color = name))+
-  geom_line(aes(group = name, color = name), linewidth = 1) +
+  geom_segment(data = line_data,
+               aes(x = "Wood rich", xend = "Wood poor",
+                   y = rich_complex, yend = poor_complex, color = name),
+               linewidth = 1) +
   scale_color_manual(values = name_colors, name  = "Site") +
   labs(y = str_wrap("Shoreline complexity dynamism (/yr)", width = 18)) +
   theme_bw() +
@@ -734,7 +763,10 @@ mutate(reach = recode(
   ggplot(aes(x = reach, y = net_change_dynamism)) +
   geom_boxplot() +
   geom_point(aes(group = name, color = name))+
-  geom_line(aes(group = name, color = name), linewidth = 1) +
+  geom_segment(data = line_data,
+               aes(x = "Wood rich", xend = "Wood poor",
+                   y = rich_net_change, yend = poor_net_change, color = name),
+               linewidth = 1) +
   theme_bw() +
   scale_color_manual(values = name_colors) +
   labs(y = expression(atop("Net change dynamism", "(" * m^{2} * "/yr)")),
